@@ -16,6 +16,7 @@ function StatusBadge({ status }) {
     denied: { bg: COLORS.dangerLight, text: COLORS.danger, label: 'Denied' },
     enrolled: { bg: '#E0ECF8', text: '#1A5A8A', label: 'Enrolled' },
   }
+  console.log(status)
   const s = styles[status] || styles.pending
   return (
     <span style={{

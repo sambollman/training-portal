@@ -12,11 +12,10 @@ const COLORS = {
 function StatusBadge({ status }) {
   const styles = {
     pending: { bg: '#FFF8E1', text: '#8A6000', label: 'Pending Approval' },
-    approved: { bg: COLORS.successLight, text: COLORS.success, label: 'Approved' },
-    denied: { bg: COLORS.dangerLight, text: COLORS.danger, label: 'Denied' },
+    approved: { bg: '#D8F3DC', text: '#2D6A4F', label: 'Approved' },
+    denied: { bg: '#FDECEA', text: '#9B2335', label: 'Denied' },
     enrolled: { bg: '#E0ECF8', text: '#1A5A8A', label: 'Enrolled' },
   }
-  console.log(status)
   const s = styles[status] || styles.pending
   return (
     <span style={{

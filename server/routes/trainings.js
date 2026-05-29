@@ -1,4 +1,3 @@
-cat > server/routes/trainings.js << 'EOF'
 const express = require('express');
 const router = express.Router();
 const db = require('../db/connection');
@@ -189,4 +188,4 @@ router.get('/:id/roster', requireAuth, requireRole('supervisor', 'coordinator'),
 });
 
 module.exports = router;
-EOF
+

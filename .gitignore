@@ -4,3 +4,5 @@ client/node_modules/
 client/dist/
 *.log
 cookies.txt
+client/node_modules/
+client/dist/

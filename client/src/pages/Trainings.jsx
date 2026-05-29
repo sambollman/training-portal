@@ -172,6 +172,7 @@ export default function Trainings() {
                       }}
                     >
                       {isRequesting ? 'Submitting...' : enrollment?.status === 'approved' ? '✓ Approved' : enrollment?.status === 'denied' ? '✗ Denied' : enrollment?.status === 'pending' ? '⏳ Pending Approval' : isFull ? 'Session Full' : 'Request to Attend →'}
+                    </buttonn>
                   )}
                 </div>
               </div>

@@ -106,3 +106,92 @@ export default function Trainings() {
               color: filter === cat ? COLORS.white : COLORS.textMid,
             }}>{cat}</button>
           ))}
+        </div>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '60px 20px', color: COLORS.textLight }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
+          <div style={{ fontWeight: 600 }}>No trainings available</div>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
+          {filtered.map(t => {
+            const isFull = parseInt(t.enrolled_count) >= t.seat_capacity
+            const enrollment = getEnrollmentStatus(t.id)
+            const isRequesting = requesting === t.id
+
+            return (
+              <div key={t.id} style={{
+                background: COLORS.white, border: `1px solid ${COLORS.border}`,
+                borderRadius: 10, overflow: 'hidden',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column'
+              }}>
+                <div style={{ background: COLORS.navy, padding: '14px 18px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      {t.category && (
+                        <span style={{ fontSize: 11, fontWeight: 600, color: COLORS.silver, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                          {t.category}
+                        </span>
+                      )}
+                      <div style={{ color: COLORS.white, fontWeight: 700, fontSize: 15, marginTop: 4 }}>{t.title}</div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+                      {t.is_required && <Badge color="required">Required</Badge>}
+                      {isFull && <Badge color="full">Full</Badge>}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ padding: '16px 18px', flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    {[
+                      { label: 'Date', val: t.session_date ? new Date(t.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' },
+                      { label: 'Duration', val: t.duration_hours ? `${t.duration_hours} hrs` : '—' },
+                      { label: 'Location', val: t.location || '—' },
+                      { label: 'Instructor', val: t.instructor || '—' },
+                    ].map(({ label, val }) => (
+                      <div key={label}>
+                        <div style={{ fontSize: 10, color: COLORS.textLight, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 2 }}>{label}</div>
+                        <div style={{ fontSize: 13, color: COLORS.textDark, fontWeight: 500 }}>{val}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <SeatBar enrolled={parseInt(t.enrolled_count)} seats={t.seat_capacity} />
+                  {user.role === 'officer' && (
+                    <button
+                      onClick={() => !enrollment && !isFull && handleRequest(t)}
+                      disabled={!!enrollment || isFull || isRequesting}
+                      style={{
+                        marginTop: 'auto', width: '100%', padding: '9px', borderRadius: 6,
+                        fontSize: 13, fontWeight: 700, border: 'none',
+                        cursor: enrollment || isFull ? 'default' : 'pointer',
+                        background: enrollment ? COLORS.successLight : isFull ? COLORS.bg : COLORS.navy,
+                        color: enrollment ? COLORS.success : isFull ? COLORS.textLight : COLORS.white,
+                      }}
+                    >
+                      {isRequesting ? 'Submitting...' : enrollment ? `✓ ${enrollment.status.charAt(0).toUpperCase() + enrollment.status.slice(1)}` : isFull ? 'Session Full' : 'Request to Attend →'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: 28, right: 28,
+          background: toast.type === 'error' ? COLORS.dangerLight : COLORS.navy,
+          color: toast.type === 'error' ? COLORS.danger : COLORS.white,
+          padding: '14px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+          boxShadow: '0 8px 24px rgba(0,0,0,0.18)', maxWidth: 380, zIndex: 200,
+          borderLeft: `4px solid ${toast.type === 'error' ? COLORS.danger : COLORS.gold}`
+        }}>
+          {toast.msg}
+        </div>
+      )}
+    </div>
+  )
+}

@@ -69,40 +69,6 @@ export default function AllRequests() {
         </div>
       </div>
 
-      {user.role === 'coordinator' && (
-        <div style={{
-          background: COLORS.white, border: `1px solid ${COLORS.border}`,
-          borderRadius: 10, padding: '18px 22px', marginBottom: 20,
-          display: 'flex', alignItems: 'center', gap: 12,
-          boxShadow: '0 1px 4px rgba(0,0,0,0.04)'
-        }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.textDark, whiteSpace: 'nowrap' }}>⬇ Download Roster</div>
-          <select
-            value={selectedRosterTraining}
-            onChange={e => setSelectedRosterTraining(e.target.value)}
-            style={{ flex: 1, padding: '8px 12px', borderRadius: 6, border: `1px solid ${COLORS.border}`, fontSize: 13, color: COLORS.textDark, background: COLORS.white }}
-          >
-            <option value="">Select a training...</option>
-            {trainings.map(t => (
-              <option key={t.id} value={t.id}>
-                {t.title} — {t.session_date ? new Date(t.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
-              </option>
-            ))}
-          </select>
-          
-            <button
-            onClick={() => selectedRosterTraining && window.open(`/api/trainings/${selectedRosterTraining}/roster`)}
-            style={{
-              padding: '8px 18px', borderRadius: 6, fontSize: 13, fontWeight: 700,
-              border: 'none', background: selectedRosterTraining ? COLORS.navy : COLORS.border,
-              color: selectedRosterTraining ? COLORS.white : COLORS.textLight,
-              cursor: 'pointer', opacity: selectedRosterTraining ? 1 : 0.4,
-              whiteSpace: 'nowrap',
-            }}
-          >Download CSV</button>
-        </div>
-      )}
-
       <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
         {filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 20px', color: COLORS.textLight }}>

@@ -98,7 +98,8 @@ export default function AllRequests() {
               border: 'none', textDecoration: 'none',
               background: selectedRosterTraining ? COLORS.navy : COLORS.border,
               color: selectedRosterTraining ? COLORS.white : COLORS.textLight,
-              cursor: selectedRosterTraining ? 'pointer' : 'default',
+              cursor: 'pointer',
+              opacity: selectedRosterTraining ? 1 : 0.4,
               whiteSpace: 'nowrap',
             }}
           >Download CSV</a>

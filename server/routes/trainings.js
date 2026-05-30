@@ -163,7 +163,7 @@ router.get('/:id/roster', requireAuth, requireRole('supervisor', 'coordinator'),
         er.request_type, er.status, er.attended
       FROM enrollment_requests er
       JOIN users u ON er.officer_id = u.id
-      WHERE er.training_id = $1
+      WHERE er.training_id=$1 AND er.attended = true
       ORDER BY u.full_name ASC
     `, [req.params.id]);
 

@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useAuth } from '../context/AuthContext'
 import axios from 'axios'
 
 const COLORS = {
@@ -28,21 +27,14 @@ function StatusBadge({ status }) {
 }
 
 export default function AllRequests() {
-  const { user } = useAuth()
   const [requests, setRequests] = useState([])
-  const [trainings, setTrainings] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
-  const [selectedRosterTraining, setSelectedRosterTraining] = useState('')
 
   useEffect(() => {
-    Promise.all([
-      axios.get('/api/requests/all'),
-      axios.get('/api/trainings'),
-    ]).then(([rr, tr]) => {
-      setRequests(rr.data.requests)
-      setTrainings(tr.data.trainings)
-    }).finally(() => setLoading(false))
+    axios.get('/api/requests/all')
+      .then(res => setRequests(res.data.requests))
+      .finally(() => setLoading(false))
   }, [])
 
   const filtered = filter === 'all' ? requests : requests.filter(r => r.status === filter)

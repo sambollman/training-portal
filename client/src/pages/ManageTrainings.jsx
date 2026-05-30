@@ -150,6 +150,10 @@ export default function ManageTrainings() {
                     style={{ padding: '8px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1.5px solid ${COLORS.gold}`, background: 'transparent', color: COLORS.gold }}
                   >⬇ Export Roster</button>
                   <button
+                    onClick={() => navigate(`/edit-training/${selected.id}`)}
+                    style={{ padding: '8px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1.5px solid ${COLORS.silver}`, background: 'transparent', color: COLORS.silver }}
+                  >✏ Edit</button>
+                  <button
                     onClick={() => handleArchive(selected.id)}
                     style={{ padding: '8px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1.5px solid ${COLORS.danger}`, background: 'transparent', color: COLORS.danger }}
                   >Archive</button>

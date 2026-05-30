@@ -27,10 +27,12 @@ app.use(session({
 const authRoutes = require('./routes/auth');
 const trainingRoutes = require('./routes/trainings');
 const requestRoutes = require('./routes/requests');
+const userRoutes = require('./routes/users');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/trainings', trainingRoutes);
 app.use('/api/requests', requestRoutes);
+app.use('/api/users', userRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });

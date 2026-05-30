@@ -8,6 +8,7 @@ import Enroll from './pages/Enroll'
 import AllRequests from './pages/AllRequests'
 import Layout from './components/Layout'
 import ManageTrainings from './pages/ManageTrainings'
+import CreateTraining from './pages/CreateTraining'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -29,7 +30,10 @@ export default function App() {
   </>
 )}
 {user.role === 'coordinator' && (
-  <Route path="/manage-trainings" element={<ManageTrainings />} />
+  <>
+    <Route path="/manage-trainings" element={<ManageTrainings />} />
+    <Route path="/create-training" element={<CreateTraining />} />
+  </>
 )}
         <Route path="*" element={<Navigate to="/trainings" />} />
       </Routes>

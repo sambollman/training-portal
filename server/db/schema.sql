@@ -56,6 +56,18 @@ CREATE TABLE IF NOT EXISTS enrollment_requests (
   UNIQUE(training_id, officer_id)
 );
 
+-- Training file attachments
+CREATE TABLE IF NOT EXISTS training_files (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  training_id UUID NOT NULL REFERENCES trainings(id) ON DELETE CASCADE,
+  filename VARCHAR NOT NULL,
+  original_name VARCHAR NOT NULL,
+  mimetype VARCHAR,
+  size INTEGER,
+  uploaded_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Auto-update updated_at on any row change
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$

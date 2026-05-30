@@ -117,7 +117,7 @@ export default function Trainings() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
           {filtered.map(t => {
-            const isFull = parseInt(t.enrolled_count) >= t.seat_capacity
+            const isFull = !t.no_seat_limit && t.seat_capacity && parseInt(t.enrolled_count) >= t.seat_capacity
             const enrollment = getEnrollmentStatus(t.id)
             const isRequesting = requesting === t.id
 

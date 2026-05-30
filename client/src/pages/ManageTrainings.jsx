@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 
 const COLORS = {
@@ -28,6 +29,7 @@ function StatusBadge({ status }) {
 }
 
 export default function ManageTrainings() {
+  const navigate = useNavigate()
   const [trainings, setTrainings] = useState([])
   const [selected, setSelected] = useState(null)
   const [enrollments, setEnrollments] = useState([])
@@ -65,7 +67,7 @@ export default function ManageTrainings() {
     try {
       await axios.patch(`/api/requests/${requestId}/attendance`, { attended })
       setEnrollments(prev => prev.map(e => e.id === requestId ? { ...e, attended } : e))
-      showToast(`Attendance marked.`)
+      showToast('Attendance marked.')
     } catch (err) {
       showToast('Failed to mark attendance', 'error')
     } finally {
@@ -90,11 +92,19 @@ export default function ManageTrainings() {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 20, alignItems: 'start' }}>
-      
-      {/* Left — training list */}
+
       <div>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: COLORS.navy, margin: '0 0 6px' }}>Manage Trainings</h1>
-        <p style={{ color: COLORS.textLight, fontSize: 13, marginBottom: 16 }}>Select a training to view enrollments and export a roster.</p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+          <div>
+            <h1 style={{ fontSize: 22, fontWeight: 700, color: COLORS.navy, margin: '0 0 6px' }}>Manage Trainings</h1>
+            <p style={{ color: COLORS.textLight, fontSize: 13, margin: 0 }}>Select a training to view enrollments and export a roster.</p>
+          </div>
+          <button onClick={() => navigate('/create-training')} style={{
+            padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 700,
+            background: COLORS.navy, color: COLORS.white, border: 'none',
+            cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 12,
+          }}>+ New Training</button>
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {trainings.map(t => (
             <div
@@ -110,14 +120,13 @@ export default function ManageTrainings() {
               <div style={{ fontWeight: 700, fontSize: 13, color: selected?.id === t.id ? COLORS.white : COLORS.textDark }}>{t.title}</div>
               <div style={{ fontSize: 11, color: selected?.id === t.id ? COLORS.silver : COLORS.textLight, marginTop: 3 }}>
                 {t.session_date ? new Date(t.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
-                {' · '}{t.enrolled_count}/{t.seat_capacity} enrolled
+                {' · '}{t.enrolled_count}/{t.seat_capacity || '∞'} enrolled
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Right — training detail */}
       <div>
         {!selected ? (
           <div style={{ textAlign: 'center', padding: '80px 20px', color: COLORS.textLight, background: COLORS.white, borderRadius: 10, border: `1px solid ${COLORS.border}` }}>

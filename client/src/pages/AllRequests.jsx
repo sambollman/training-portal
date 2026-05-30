@@ -90,19 +90,16 @@ export default function AllRequests() {
             ))}
           </select>
           
-            href={selectedRosterTraining ? `/api/trainings/${selectedRosterTraining}/roster` : '#'}
-            download
-            onClick={e => !selectedRosterTraining && e.preventDefault()}
+            <button
+            onClick={() => selectedRosterTraining && window.open(`/api/trainings/${selectedRosterTraining}/roster`)}
             style={{
               padding: '8px 18px', borderRadius: 6, fontSize: 13, fontWeight: 700,
-              border: 'none', textDecoration: 'none',
-              background: selectedRosterTraining ? COLORS.navy : COLORS.border,
+              border: 'none', background: selectedRosterTraining ? COLORS.navy : COLORS.border,
               color: selectedRosterTraining ? COLORS.white : COLORS.textLight,
-              cursor: 'pointer',
-              opacity: selectedRosterTraining ? 1 : 0.4,
+              cursor: 'pointer', opacity: selectedRosterTraining ? 1 : 0.4,
               whiteSpace: 'nowrap',
             }}
-          >Download CSV</a>
+          >Download CSV</button>
         </div>
       )}
 

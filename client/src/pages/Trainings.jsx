@@ -157,6 +157,11 @@ export default function Trainings() {
                       </div>
                     ))}
                   </div>
+                  {t.description && (
+                    <p style={{ fontSize: 12, color: COLORS.textMid, margin: 0, lineHeight: 1.5 }}>
+                      {t.description}
+                    </p>
+                  )}
                   <SeatBar enrolled={parseInt(t.enrolled_count)} seats={t.seat_capacity} />
                   {user.role === 'officer' && (
                     <button

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useAuth } from '../context/AuthContext'
 import axios from 'axios'
 
 const COLORS = {
@@ -27,14 +28,21 @@ function StatusBadge({ status }) {
 }
 
 export default function AllRequests() {
+  const { user } = useAuth()
   const [requests, setRequests] = useState([])
+  const [trainings, setTrainings] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [selectedRosterTraining, setSelectedRosterTraining] = useState('')
 
   useEffect(() => {
-    axios.get('/api/requests/all')
-      .then(res => setRequests(res.data.requests))
-      .finally(() => setLoading(false))
+    Promise.all([
+      axios.get('/api/requests/all'),
+      axios.get('/api/trainings'),
+    ]).then(([rr, tr]) => {
+      setRequests(rr.data.requests)
+      setTrainings(tr.data.trainings)
+    }).finally(() => setLoading(false))
   }, [])
 
   const filtered = filter === 'all' ? requests : requests.filter(r => r.status === filter)
@@ -60,6 +68,42 @@ export default function AllRequests() {
           ))}
         </div>
       </div>
+
+      {user.role === 'coordinator' && (
+        <div style={{
+          background: COLORS.white, border: `1px solid ${COLORS.border}`,
+          borderRadius: 10, padding: '18px 22px', marginBottom: 20,
+          display: 'flex', alignItems: 'center', gap: 12,
+          boxShadow: '0 1px 4px rgba(0,0,0,0.04)'
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.textDark, whiteSpace: 'nowrap' }}>⬇ Download Roster</div>
+          <select
+            value={selectedRosterTraining}
+            onChange={e => setSelectedRosterTraining(e.target.value)}
+            style={{ flex: 1, padding: '8px 12px', borderRadius: 6, border: `1px solid ${COLORS.border}`, fontSize: 13, color: COLORS.textDark, background: COLORS.white }}
+          >
+            <option value="">Select a training...</option>
+            {trainings.map(t => (
+              <option key={t.id} value={t.id}>
+                {t.title} — {t.session_date ? new Date(t.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
+              </option>
+            ))}
+          </select>
+          
+            href={selectedRosterTraining ? `/api/trainings/${selectedRosterTraining}/roster` : '#'}
+            download
+            onClick={e => !selectedRosterTraining && e.preventDefault()}
+            style={{
+              padding: '8px 18px', borderRadius: 6, fontSize: 13, fontWeight: 700,
+              border: 'none', textDecoration: 'none',
+              background: selectedRosterTraining ? COLORS.navy : COLORS.border,
+              color: selectedRosterTraining ? COLORS.white : COLORS.textLight,
+              cursor: selectedRosterTraining ? 'pointer' : 'default',
+              whiteSpace: 'nowrap',
+            }}
+          >Download CSV</a>
+        </div>
+      )}
 
       <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
         {filtered.length === 0 ? (

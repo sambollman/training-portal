@@ -36,6 +36,8 @@ services:
     volumes:
       - ./server:/app
       - /app/node_modules
+      - uploads_data:/app/uploads
 
 volumes:
   postgres_data:
+  uploads_data:

@@ -2,7 +2,22 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/connection');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
+const uploadDir = '/app/uploads';
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    cb(null, `${unique}${path.extname(file.originalname)}`);
+  }
+});
+
+const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 // GET /api/trainings - list all active trainings
 router.get('/', requireAuth, async (req, res) => {
   try {
@@ -184,6 +199,94 @@ router.get('/:id/roster', requireAuth, requireRole('supervisor', 'coordinator'),
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to generate roster' });
+  }
+});
+
+// POST /api/trainings/:id/files - upload files
+router.post('/:id/files', requireAuth, requireRole('coordinator'), upload.array('files', 10), async (req, res) => {
+  try {
+    const files = req.files;
+    if (!files || files.length === 0) {
+      return res.status(400).json({ error: 'No files uploaded' });
+    }
+
+    const inserted = [];
+    for (const file of files) {
+      const result = await db.query(`
+        INSERT INTO training_files (training_id, filename, original_name, mimetype, size, uploaded_by)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *
+      `, [req.params.id, file.filename, file.originalname, file.mimetype, file.size, req.user.id]);
+      inserted.push(result.rows[0]);
+    }
+
+    res.status(201).json({ files: inserted });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to upload files' });
+  }
+});
+
+// GET /api/trainings/:id/files - list files for a training
+router.get('/:id/files', requireAuth, async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT * FROM training_files WHERE training_id = $1 ORDER BY created_at ASC',
+      [req.params.id]
+    );
+    res.json({ files: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch files' });
+  }
+});
+
+// GET /api/trainings/:id/files/:fileId - download a file
+router.get('/:id/files/:fileId', requireAuth, async (req, res) => {
+  try {
+    const result = await db.query(
+      'SELECT * FROM training_files WHERE id = $1 AND training_id = $2',
+      [req.params.fileId, req.params.id]
+    );
+
+    if (!result.rows[0]) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    const file = result.rows[0];
+    const filePath = path.join(uploadDir, file.filename);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found on disk' });
+    }
+
+    res.setHeader('Content-Disposition', `attachment; filename="${file.original_name}"`);
+    res.sendFile(filePath);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to download file' });
+  }
+});
+
+// DELETE /api/trainings/:id/files/:fileId - delete a file
+router.delete('/:id/files/:fileId', requireAuth, requireRole('coordinator'), async (req, res) => {
+  try {
+    const result = await db.query(
+      'DELETE FROM training_files WHERE id = $1 AND training_id = $2 RETURNING *',
+      [req.params.fileId, req.params.id]
+    );
+
+    if (!result.rows[0]) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    const filePath = path.join(uploadDir, result.rows[0].filename);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete file' });
   }
 });
 

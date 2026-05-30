@@ -9,6 +9,7 @@ import AllRequests from './pages/AllRequests'
 import Layout from './components/Layout'
 import ManageTrainings from './pages/ManageTrainings'
 import CreateTraining from './pages/CreateTraining'
+import EditTraining from './pages/EditTraining'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -33,6 +34,7 @@ export default function App() {
   <>
     <Route path="/manage-trainings" element={<ManageTrainings />} />
     <Route path="/create-training" element={<CreateTraining />} />
+    <Route path="/edit-training/:id" element={<EditTraining />} />
   </>
 )}
         <Route path="*" element={<Navigate to="/trainings" />} />

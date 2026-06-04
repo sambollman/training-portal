@@ -149,7 +149,7 @@ export default function Trainings() {
                 <div style={{ padding: '16px 18px', flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     {[
-                      { label: 'Date', val: t.session_date ? (t.end_date ? `${new Date(t.session_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(t.end_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : new Date(t.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })) : '—' },
+                      { label: 'Date', val: t.session_date ? (t.end_date ? `${new Date(t.session_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(t.end_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : new Date(t.session_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })) : '—' },
                       { label: 'Duration', val: t.duration_hours ? `${t.duration_hours} hrs` : '—' },
                       { label: 'Location', val: t.location || '—' },
                       { label: 'Instructor', val: t.instructor || '—' },

@@ -64,7 +64,7 @@ export default function TrainingDetail() {
     }
   }
 
-  const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '—'
+  const formatDate = (d) => d ? new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '—'
   const formatTime = (t) => {
     if (!t) return '—'
     const [h, m] = t.split(':')

@@ -84,7 +84,7 @@ export default function Pending() {
                       Requesting: <strong style={{ color: COLORS.textMid }}>{r.title}</strong>
                     </div>
                     <div style={{ color: COLORS.textLight, fontSize: 11, marginTop: 2 }}>
-                      {r.session_date ? new Date(r.session_date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
+                      {r.session_date ? new Date(r.session_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
                       {r.location ? ` · ${r.location}` : ''}
                       {' · '}Badge #{r.badge_number} · {r.unit}
                     </div>

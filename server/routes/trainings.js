@@ -184,7 +184,7 @@ router.get('/:id/roster', requireAuth, requireRole('supervisor', 'coordinator'),
       );
     }
 
-    const filename = `${t..replace(/[^a-z0-9]/gi, '_')}_roster.csv`;
+    const filename = `${t.title.replace(/[^a-z0-9]/gi, '_')}_roster.csv`;
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(lines.join('\n'));

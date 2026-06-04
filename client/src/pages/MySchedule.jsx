@@ -78,7 +78,7 @@ export default function MySchedule() {
                 <div>
                   <div style={{ fontWeight: 700, color: COLORS.textDark, fontSize: 15 }}>{r.title}</div>
                   <div style={{ color: COLORS.textLight, fontSize: 12, marginTop: 2 }}>
-                    {r.session_date ? new Date(r.session_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
+                    {r.session_date ? new Date(r.session_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
                     {r.location ? ` · ${r.location}` : ''}
                     {' · '}{r.request_type === 'supervisor_enrolled' ? 'Enrolled by supervisor' : 'Self-requested'}
                   </div>

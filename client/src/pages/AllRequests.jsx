@@ -85,7 +85,7 @@ export default function AllRequests() {
                   </td>
                   <td style={{ padding: '14px 18px', fontSize: 13, color: COLORS.textMid }}>{r.title}</td>
                   <td style={{ padding: '14px 18px', fontSize: 13, color: COLORS.textMid }}>
-                    {r.session_date ? new Date(r.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                    {r.session_date ? new Date(r.session_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                   </td>
                   <td style={{ padding: '14px 18px', fontSize: 12, color: COLORS.textLight }}>
                     {r.request_type === 'supervisor_enrolled' ? 'Supervisor enrolled' : 'Self-requested'}

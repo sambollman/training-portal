@@ -111,11 +111,7 @@ router.post('/', requireAuth, requireRole('coordinator'), async (req, res) => {
 
 // PUT /api/trainings/:id - update a training (coordinator only)
 router.put('/:id', requireAuth, requireRole('coordinator'), async (req, res) => {
-  const {
-    title, category, description, instructor,
-    location, session_date, start_time,
-    duration_hours, seat_capacity, is_required
-  } = req.body;
+  const { title, category, description, instructor, location, session_date, end_date, start_time, end_time, duration_hours, seat_capacity, no_seat_limit, cost, training_type, is_required } = req.body;
 
   try {
     const result = await db.query(`

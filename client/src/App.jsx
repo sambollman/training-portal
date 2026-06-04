@@ -11,6 +11,7 @@ import ManageTrainings from './pages/ManageTrainings'
 import CreateTraining from './pages/CreateTraining'
 import EditTraining from './pages/EditTraining'
 import TrainingDetail from './pages/TrainingDetail'
+import AdminUsers from './pages/AdminUsers'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -37,6 +38,7 @@ export default function App() {
     <Route path="/manage-trainings" element={<ManageTrainings />} />
     <Route path="/create-training" element={<CreateTraining />} />
     <Route path="/edit-training/:id" element={<EditTraining />} />
+    <Route path="/admin/users" element={<AdminUsers />} />
   </>
 )}
         <Route path="*" element={<Navigate to="/trainings" />} />

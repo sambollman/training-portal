@@ -35,8 +35,7 @@ router.post('/users', async (req, res) => {
       INSERT INTO users (username, full_name, email, badge_number, post_license_number, unit, rank, role, supervisor_id)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
-    `, [username, full_name, email, badge_number, post_license_number, unit, rank || 'officer', supervisor_id || null]);
-
+    `, [username, full_name, email || null, badge_number || null, post_license_number || null, unit || null, rank || 'Officer', role || 'officer', supervisor_id || null]);
     res.status(201).json({ user: result.rows[0] });
   } catch (err) {
     if (err.code === '23505') {

@@ -136,11 +136,10 @@ export default function TrainingDetail() {
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 12 }}>Attachments</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {files.map(f => (
-                
+                <button
                   key={f.id}
-                  href={`/api/trainings/${id}/files/${f.id}`}
-                  download={f.original_name}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: COLORS.bg, borderRadius: 6, textDecoration: 'none', border: `1px solid ${COLORS.border}` }}
+                  onClick={() => window.open(`/api/trainings/${id}/files/${f.id}`)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: COLORS.bg, borderRadius: 6, border: `1px solid ${COLORS.border}`, width: '100%', cursor: 'pointer', textAlign: 'left' }}
                 >
                   <span style={{ fontSize: 18 }}>📎</span>
                   <div>
@@ -148,7 +147,8 @@ export default function TrainingDetail() {
                     <div style={{ fontSize: 11, color: COLORS.textLight }}>{(f.size / 1024).toFixed(1)} KB</div>
                   </div>
                   <span style={{ marginLeft: 'auto', fontSize: 12, color: COLORS.gold, fontWeight: 700 }}>Download</span>
-                </a>
+                </button>
+              ))}
               ))}
             </div>
           </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import axios from 'axios'
+import { useNavigate } from 'react-router-dom'
 
 const COLORS = {
   navy: '#0D1B2A', navyMid: '#1B2E45', gold: '#C9A84C',
@@ -45,6 +46,7 @@ function SeatBar({ enrolled, seats }) {
 
 export default function Trainings() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [trainings, setTrainings] = useState([])
   const [loading, setLoading] = useState(true)
   const [myRequests, setMyRequests] = useState([])
@@ -122,10 +124,11 @@ export default function Trainings() {
             const isRequesting = requesting === t.id
 
             return (
-              <div key={t.id} style={{
+              <div key={t.id} onClick={() => navigate(`/trainings/${t.id}`)} style={{
                 background: COLORS.white, border: `1px solid ${COLORS.border}`,
                 borderRadius: 10, overflow: 'hidden',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column'
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column',
+                cursor: 'pointer',
               }}>
                 <div style={{ background: COLORS.navy, padding: '14px 18px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>

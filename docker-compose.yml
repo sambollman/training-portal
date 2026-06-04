@@ -18,7 +18,9 @@ services:
       retries: 5
 
   app:
-    build: ./server
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       db:
@@ -31,11 +33,10 @@ services:
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}
       SMTP_FROM: ${SMTP_FROM}
+      NODE_ENV: production
     ports:
       - "3000:3000"
     volumes:
-      - ./server:/app
-      - /app/node_modules
       - uploads_data:/app/uploads
 
 volumes:

@@ -162,7 +162,9 @@ export default function Trainings() {
                       {t.description}
                     </p>
                   )}
-                  <SeatBar enrolled={parseInt(t.enrolled_count)} seats={t.seat_capacity} />
+                  {!t.no_seat_limit && t.seat_capacity && (
+                    <SeatBar enrolled={parseInt(t.enrolled_count)} seats={t.seat_capacity} />
+                  )}
                   {user.role === 'officer' && (
                     <button
                       onClick={() => !enrollment && !isFull && handleRequest(t)}

@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
   full_name VARCHAR,
   email VARCHAR,
   badge_number VARCHAR,
+  post_license_number VARCHAR,
   unit VARCHAR,
   rank VARCHAR,
   role VARCHAR NOT NULL DEFAULT 'officer',

@@ -83,7 +83,7 @@ export default function Enroll() {
                     {t.category && <div style={{ fontSize: 11, color: '#8A9BB0', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{t.category}</div>}
                     <div style={{ color: '#FFFFFF', fontWeight: 700, fontSize: 14, marginTop: 4 }}>{t.title}</div>
                     <div style={{ color: '#8A9BB0', fontSize: 12, marginTop: 2 }}>
-                      {t.session_date ? new Date(t.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                      {t.session_date ? new Date(t.session_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                       {t.duration_hours ? ` · ${t.duration_hours} hrs` : ''}
                     </div>
                   </div>

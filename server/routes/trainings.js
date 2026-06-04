@@ -120,18 +120,14 @@ router.put('/:id', requireAuth, requireRole('coordinator'), async (req, res) => 
   try {
     const result = await db.query(`
       UPDATE trainings SET
-        title = $1, category = $2, description = $3,
-        instructor = $4, location = $5, session_date = $6,
-        start_time = $7, duration_hours = $8, seat_capacity = $9,
-        is_required = $10
-      WHERE id = $11 AND is_archived = false
+        title=$1, category=$2, description=$3, instructor=$4, location=$5,
+        session_date=$6, end_date=$7, start_time=$8, end_time=$9,
+        duration_hours=$10, seat_capacity=$11, no_seat_limit=$12,
+        cost=$13, training_type=$14, is_required=$15
+      WHERE id=$16 AND is_archived=false
       RETURNING *
     `, [
-      title, category, description, instructor,
-      location, session_date, start_time,
-      duration_hours, seat_capacity,
-      is_required || false, req.params.id
-    ]);
+      title, category, description, instructor, location, session_date, end_date, start_time, end_time, duration_hours, seat_capacity, no_seat_limit || false, cost, training_type, is_required || false, req.params.id]);
 
     if (!result.rows[0]) {
       return res.status(404).json({ error: 'Training not found' });
@@ -192,7 +188,7 @@ router.get('/:id/roster', requireAuth, requireRole('supervisor', 'coordinator'),
       );
     }
 
-    const filename = `${t.title.replace(/[^a-z0-9]/gi, '_')}_roster.csv`;
+    const filename = `${t..replace(/[^a-z0-9]/gi, '_')}_roster.csv`;
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(lines.join('\n'));

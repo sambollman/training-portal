@@ -7,7 +7,7 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 router.get('/', requireAuth, async (req, res) => {
   try {
     const result = await db.query(`
-      SELECT er.*, t.title, to_char(t.session_date, 'YYYY-MM-DD') as session_date, t.location, t.category
+      SELECT er.*, t.title, to_char(t.session_date, 'YYYY-MM-DD') as session_date, to_char(t.end_date, 'YYYY-MM-DD') as end_date, t.location, t.category
       FROM enrollment_requests er
       JOIN trainings t ON er.training_id = t.id
       WHERE er.officer_id = $1
@@ -24,7 +24,7 @@ router.get('/', requireAuth, async (req, res) => {
 router.get('/pending', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
   try {
     const result = await db.query(`
-      SELECT er.*, t.title, to_char(t.session_date, 'YYYY-MM-DD') as session_date, t.location, t.category,
+      SELECT er.*, t.title, to_char(t.session_date, 'YYYY-MM-DD') as session_date, to_char(t.end_date, 'YYYY-MM-DD') as end_date, t.location, t.category,
              u.full_name, u.badge_number, u.unit
       FROM enrollment_requests er
       JOIN trainings t ON er.training_id = t.id
@@ -44,7 +44,7 @@ router.get('/pending', requireAuth, requireRole('supervisor', 'coordinator'), as
 router.get('/all', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
   try {
     const result = await db.query(`
-      SELECT er.*, t.title, to_char(t.session_date, 'YYYY-MM-DD') as session_date, t.location, t.category,
+      SELECT er.*, t.title, to_char(t.session_date, 'YYYY-MM-DD') as session_date, to_char(t.end_date, 'YYYY-MM-DD') as end_date, t.location, t.category,
              u.full_name, u.badge_number, u.unit
       FROM enrollment_requests er
       JOIN trainings t ON er.training_id = t.id

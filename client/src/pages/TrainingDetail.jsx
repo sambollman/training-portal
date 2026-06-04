@@ -80,28 +80,25 @@ export default function TrainingDetail() {
   return (
     <div style={{ maxWidth: 800, margin: '0 auto' }}>
       <button onClick={() => navigate('/trainings')} style={{ background: 'none', border: 'none', color: COLORS.textLight, fontSize: 13, cursor: 'pointer', marginBottom: 16, padding: 0 }}>
-        ← Back to Trainings
+        Back to Trainings
       </button>
 
-      {/* Header */}
       <div style={{ background: COLORS.navy, borderRadius: '10px 10px 0 0', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           {training.category && <div style={{ fontSize: 11, color: COLORS.silver, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>{training.category}</div>}
           <h1 style={{ color: COLORS.white, fontSize: 22, fontWeight: 700, margin: '0 0 6px' }}>{training.title}</h1>
           <div style={{ display: 'flex', gap: 12 }}>
             {training.is_required && <span style={{ background: '#FFF0E0', color: '#B5621B', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase' }}>Required</span>}
-            <span style={{ background: training.training_type === 'external' ? '#E0ECF8' : COLORS.navyMid, color: training.training_type === 'external' ? '#1A5A8A' : COLORS.silver, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase' }}>{training.training_type}</span>
+            <span style={{ background: COLORS.navyMid, color: COLORS.silver, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase' }}>{training.training_type}</span>
           </div>
         </div>
         {user.role === 'coordinator' && (
-          <button onClick={() => navigate(`/edit-training/${id}`)} style={{ padding: '8px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1.5px solid ${COLORS.silver}`, background: 'transparent', color: COLORS.silver }}>✏ Edit</button>
+          <button onClick={() => navigate(`/edit-training/${id}`)} style={{ padding: '8px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1.5px solid ${COLORS.silver}`, background: 'transparent', color: COLORS.silver }}>Edit</button>
         )}
       </div>
 
-      {/* Body */}
       <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '24px 28px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
 
-        {/* Date & Time */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 20, marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>
           <InfoBlock label="Start Date" value={formatDate(training.session_date)} />
           {training.end_date && <InfoBlock label="End Date" value={formatDate(training.end_date)} />}
@@ -110,19 +107,16 @@ export default function TrainingDetail() {
           <InfoBlock label="Duration" value={training.duration_hours ? `${training.duration_hours} hours` : '—'} />
         </div>
 
-        {/* Location & Instructor */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>
           <InfoBlock label="Location" value={training.location} />
           <InfoBlock label="Instructor" value={training.instructor} />
         </div>
 
-        {/* Enrollment */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20, marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>
           <InfoBlock label="Seats" value={training.no_seat_limit ? 'No limit' : `${training.enrolled_count} / ${training.seat_capacity} enrolled`} />
           <InfoBlock label="Cost per Attendee" value={training.cost ? `$${parseFloat(training.cost).toFixed(2)}` : 'Free'} />
         </div>
 
-        {/* Description */}
         {training.description && (
           <div style={{ marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 8 }}>Description</div>
@@ -130,7 +124,6 @@ export default function TrainingDetail() {
           </div>
         )}
 
-        {/* Files */}
         {files.length > 0 && (
           <div style={{ marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 12 }}>Attachments</div>
@@ -149,28 +142,24 @@ export default function TrainingDetail() {
                   <span style={{ marginLeft: 'auto', fontSize: 12, color: COLORS.gold, fontWeight: 700 }}>Download</span>
                 </button>
               ))}
-              ))}
             </div>
           </div>
         )}
 
-        {/* Request button */}
         {user.role === 'officer' && (
           <div>
             {myRequest ? (
-              <div style={{ padding: '14px 18px', borderRadius: 8, background: myRequest.status === 'approved' ? COLORS.successLight : myRequest.status === 'denied' ? COLORS.dangerLight : '#FFF8E1', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: myRequest.status === 'approved' ? COLORS.success : myRequest.status === 'denied' ? COLORS.danger : '#8A6000' }}>
-                    {myRequest.status === 'approved' ? '✓ Request Approved' : myRequest.status === 'denied' ? '✗ Request Denied' : '⏳ Pending Approval'}
-                  </div>
-                  {myRequest.denial_note && <div style={{ fontSize: 12, color: COLORS.danger, marginTop: 4 }}>Note: {myRequest.denial_note}</div>}
+              <div style={{ padding: '14px 18px', borderRadius: 8, background: myRequest.status === 'approved' ? COLORS.successLight : myRequest.status === 'denied' ? COLORS.dangerLight : '#FFF8E1' }}>
+                <div style={{ fontWeight: 700, fontSize: 14, color: myRequest.status === 'approved' ? COLORS.success : myRequest.status === 'denied' ? COLORS.danger : '#8A6000' }}>
+                  {myRequest.status === 'approved' ? 'Request Approved' : myRequest.status === 'denied' ? 'Request Denied' : 'Pending Approval'}
                 </div>
+                {myRequest.denial_note && <div style={{ fontSize: 12, color: COLORS.danger, marginTop: 4 }}>Note: {myRequest.denial_note}</div>}
               </div>
             ) : isFull ? (
               <div style={{ padding: '14px 18px', borderRadius: 8, background: COLORS.bg, color: COLORS.textLight, fontWeight: 600, fontSize: 14, textAlign: 'center' }}>This session is full</div>
             ) : (
               <button onClick={handleRequest} disabled={requesting} style={{ width: '100%', padding: '12px', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: requesting ? 'default' : 'pointer', border: 'none', background: COLORS.navy, color: COLORS.white }}>
-                {requesting ? 'Submitting...' : 'Request to Attend →'}
+                {requesting ? 'Submitting...' : 'Request to Attend'}
               </button>
             )}
           </div>

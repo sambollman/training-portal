@@ -119,7 +119,7 @@ export default function ManageTrainings() {
             >
               <div style={{ fontWeight: 700, fontSize: 13, color: selected?.id === t.id ? COLORS.white : COLORS.textDark }}>{t.title}</div>
               <div style={{ fontSize: 11, color: selected?.id === t.id ? COLORS.silver : COLORS.textLight, marginTop: 3 }}>
-                {t.session_date ? new Date(t.session_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                {t.session_date ? new Date(t.session_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                 {' · '}{t.enrolled_count}/{t.seat_capacity || '∞'} enrolled
               </div>
             </div>

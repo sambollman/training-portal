@@ -23,7 +23,12 @@ router.get('/', requireAuth, async (req, res) => {
   try {
     const result = await db.query(`
       SELECT 
-        t.*,
+        t.id, t.title, t.category, t.description, t.instructor, t.location,
+        to_char(t.session_date, 'YYYY-MM-DD') as session_date,
+        to_char(t.end_date, 'YYYY-MM-DD') as end_date,
+        t.start_time, t.end_time, t.duration_hours, t.seat_capacity,
+        t.no_seat_limit, t.cost, t.training_type, t.is_required,
+        t.is_archived, t.created_by, t.created_at, t.updated_at,
         COUNT(er.id) FILTER (WHERE er.status IN ('approved', 'enrolled')) AS enrolled_count
       FROM trainings t
       LEFT JOIN enrollment_requests er ON t.id = er.training_id
@@ -43,7 +48,12 @@ router.get('/:id', requireAuth, async (req, res) => {
   try {
     const training = await db.query(`
       SELECT 
-        t.*,
+        t.id, t.title, t.category, t.description, t.instructor, t.location,
+        to_char(t.session_date, 'YYYY-MM-DD') as session_date,
+        to_char(t.end_date, 'YYYY-MM-DD') as end_date,
+        t.start_time, t.end_time, t.duration_hours, t.seat_capacity,
+        t.no_seat_limit, t.cost, t.training_type, t.is_required,
+        t.is_archived, t.created_by, t.created_at, t.updated_at,
         COUNT(er.id) FILTER (WHERE er.status IN ('approved', 'enrolled')) AS enrolled_count
       FROM trainings t
       LEFT JOIN enrollment_requests er ON t.id = er.training_id

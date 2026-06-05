@@ -3,6 +3,8 @@ CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username VARCHAR UNIQUE NOT NULL,
   full_name VARCHAR,
+  first_name VARCHAR,
+  last_name VARCHAR,
   email VARCHAR,
   badge_number VARCHAR,
   post_license_number VARCHAR,

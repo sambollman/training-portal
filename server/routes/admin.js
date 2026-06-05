@@ -3,17 +3,15 @@ const router = express.Router();
 const db = require('../db/connection');
 const { requireAuth, requireRole } = require('../middleware/auth');
 
-// All admin routes require coordinator role
 router.use(requireAuth, requireRole('coordinator'));
 
-// GET /api/admin/users - list all users
 router.get('/users', async (req, res) => {
   try {
     const result = await db.query(`
       SELECT u.*, s.full_name as supervisor_name
       FROM users u
       LEFT JOIN users s ON u.supervisor_id = s.id
-      ORDER BY u.full_name ASC
+      ORDER BY u.last_name ASC, u.first_name ASC
     `);
     res.json({ users: result.rows });
   } catch (err) {
@@ -22,20 +20,26 @@ router.get('/users', async (req, res) => {
   }
 });
 
-// POST /api/admin/users - create a new user
 router.post('/users', async (req, res) => {
-  const { username, full_name, email, badge_number, post_license_number, unit, rank, role, supervisor_id } = req.body;
+  const { username, first_name, last_name, email, badge_number, post_license_number, unit, rank, role, supervisor_id } = req.body;
 
-  if (!username || !full_name) {
-    return res.status(400).json({ error: 'Username and full name are required' });
+  if (!username || !first_name || !last_name) {
+    return res.status(400).json({ error: 'Username, first name, and last name are required' });
   }
+
+  const full_name = `${first_name} ${last_name}`;
 
   try {
     const result = await db.query(`
-      INSERT INTO users (username, full_name, email, badge_number, post_license_number, unit, rank, role, supervisor_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO users (username, first_name, last_name, full_name, email, badge_number, post_license_number, unit, rank, role, supervisor_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *
-    `, [username, full_name, email || null, badge_number || null, post_license_number || null, unit || null, rank || 'Officer', role || 'officer', supervisor_id || null]);
+    `, [
+      username, first_name, last_name, full_name,
+      email || null, badge_number || null, post_license_number || null,
+      unit || null, rank || 'Officer', role || 'officer', supervisor_id || null
+    ]);
+
     res.status(201).json({ user: result.rows[0] });
   } catch (err) {
     if (err.code === '23505') {
@@ -46,19 +50,26 @@ router.post('/users', async (req, res) => {
   }
 });
 
-// PUT /api/admin/users/:id - update a user
 router.put('/users/:id', async (req, res) => {
-  const { full_name, email, badge_number, post_license_number, unit, rank, role, supervisor_id, is_active } = req.body;
+  const { first_name, last_name, email, badge_number, post_license_number, unit, rank, role, supervisor_id, is_active } = req.body;
+
+  const full_name = `${first_name} ${last_name}`;
 
   try {
     const result = await db.query(`
       UPDATE users SET
-        full_name = $1, email = $2, badge_number = $3,
-        post_license_number = $4, unit = $5, rank = $6,
-        role = $7, supervisor_id = $8, is_active = $9
-      WHERE id = $10
+        first_name = $1, last_name = $2, full_name = $3,
+        email = $4, badge_number = $5, post_license_number = $6,
+        unit = $7, rank = $8, role = $9,
+        supervisor_id = $10, is_active = $11
+      WHERE id = $12
       RETURNING *
-    `, [full_name, email, badge_number, post_license_number, unit, rank, role, supervisor_id || null, is_active !== false, req.params.id]);
+    `, [
+      first_name, last_name, full_name,
+      email || null, badge_number || null, post_license_number || null,
+      unit || null, rank, role,
+      supervisor_id || null, is_active !== false, req.params.id
+    ]);
 
     if (!result.rows[0]) {
       return res.status(404).json({ error: 'User not found' });
@@ -71,7 +82,6 @@ router.put('/users/:id', async (req, res) => {
   }
 });
 
-// GET /api/admin/users/:id - get single user
 router.get('/users/:id', async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM users WHERE id = $1', [req.params.id]);

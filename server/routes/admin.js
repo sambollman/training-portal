@@ -7,18 +7,40 @@ router.use(requireAuth, requireRole('coordinator'));
 
 router.get('/users', async (req, res) => {
   try {
-    const result = await db.query(`
-      SELECT u.*, s.full_name as supervisor_name
-      FROM users u
-      LEFT JOIN users s ON u.supervisor_id = s.id
-      ORDER BY u.last_name ASC, u.first_name ASC
-    `);
-    res.json({ users: result.rows });
+    const { search } = req.query
+    let query, params
+
+    if (search) {
+      query = `
+        SELECT u.*, s.full_name as supervisor_name
+        FROM users u
+        LEFT JOIN users s ON u.supervisor_id = s.id
+        WHERE u.is_active = true
+        AND (
+          u.first_name ILIKE $1 OR u.last_name ILIKE $1 OR
+          u.full_name ILIKE $1 OR u.badge_number ILIKE $1 OR
+          u.unit ILIKE $1
+        )
+        ORDER BY u.last_name ASC, u.first_name ASC
+      `
+      params = [`%${search}%`]
+    } else {
+      query = `
+        SELECT u.*, s.full_name as supervisor_name
+        FROM users u
+        LEFT JOIN users s ON u.supervisor_id = s.id
+        ORDER BY u.last_name ASC, u.first_name ASC
+      `
+      params = []
+    }
+
+    const result = await db.query(query, params)
+    res.json({ users: result.rows })
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to fetch users' });
+    console.error(err)
+    res.status(500).json({ error: 'Failed to fetch users' })
   }
-});
+})
 
 router.post('/users', async (req, res) => {
   const { username, first_name, last_name, email, badge_number, post_license_number, unit, rank, role, supervisor_id } = req.body;

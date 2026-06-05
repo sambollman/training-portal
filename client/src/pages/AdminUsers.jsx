@@ -12,9 +12,9 @@ const RANKS = ['Civilian', 'Officer', 'Manager', 'Sergeant', 'Lieutenant', 'Capt
 const ROLES = ['officer', 'supervisor', 'coordinator']
 
 const emptyForm = {
-  username: '', full_name: '', email: '', badge_number: '',
-  post_license_number: '', unit: '', rank: 'Officer',
-  role: 'officer', supervisor_id: '', is_active: true,
+  username: '', first_name: '', last_name: '', email: '',
+  badge_number: '', post_license_number: '', unit: '',
+  rank: 'Officer', role: 'officer', supervisor_id: '', is_active: true,
 }
 
 function Field({ label, required, children }) {
@@ -38,7 +38,7 @@ export default function AdminUsers() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [modal, setModal] = useState(null) // 'create' | 'edit'
+  const [modal, setModal] = useState(null)
   const [editingUser, setEditingUser] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [saving, setSaving] = useState(false)
@@ -68,7 +68,8 @@ export default function AdminUsers() {
   const openEdit = (user) => {
     setForm({
       username: user.username || '',
-      full_name: user.full_name || '',
+      first_name: user.first_name || '',
+      last_name: user.last_name || '',
       email: user.email || '',
       badge_number: user.badge_number || '',
       post_license_number: user.post_license_number || '',
@@ -91,7 +92,7 @@ export default function AdminUsers() {
       const payload = { ...form, supervisor_id: form.supervisor_id || null }
       if (modal === 'create') {
         const res = await axios.post('/api/admin/users', payload)
-        setUsers(prev => [...prev, res.data.user].sort((a, b) => a.full_name?.localeCompare(b.full_name)))
+        setUsers(prev => [...prev, res.data.user].sort((a, b) => a.last_name?.localeCompare(b.last_name)))
         showToast(`${res.data.user.full_name} added successfully.`)
       } else {
         const res = await axios.put(`/api/admin/users/${editingUser.id}`, payload)
@@ -108,7 +109,9 @@ export default function AdminUsers() {
 
   const supervisors = users.filter(u => u.role === 'supervisor' || u.role === 'coordinator')
   const filtered = users.filter(u =>
-    !search || u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+    !search ||
+    u.first_name?.toLowerCase().includes(search.toLowerCase()) ||
+    u.last_name?.toLowerCase().includes(search.toLowerCase()) ||
     u.username?.toLowerCase().includes(search.toLowerCase()) ||
     u.badge_number?.includes(search) ||
     u.unit?.toLowerCase().includes(search.toLowerCase())
@@ -145,7 +148,7 @@ export default function AdminUsers() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
-              {['Name', 'Username', 'Badge', 'POST License', 'Unit', 'Rank', 'Role', 'Status', ''].map(h => (
+              {['Last Name', 'First Name', 'Username', 'Badge', 'POST License', 'Unit', 'Rank', 'Role', 'Status', ''].map(h => (
                 <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: COLORS.textLight, letterSpacing: '0.07em', textTransform: 'uppercase' }}>{h}</th>
               ))}
             </tr>
@@ -155,7 +158,8 @@ export default function AdminUsers() {
               const rc = roleColor(u.role)
               return (
                 <tr key={u.id} style={{ borderBottom: i < filtered.length - 1 ? `1px solid ${COLORS.border}` : 'none', opacity: u.is_active ? 1 : 0.5 }}>
-                  <td style={{ padding: '12px 16px', fontWeight: 600, color: COLORS.textDark, fontSize: 13 }}>{u.full_name}</td>
+                  <td style={{ padding: '12px 16px', fontWeight: 600, color: COLORS.textDark, fontSize: 13 }}>{u.last_name}</td>
+                  <td style={{ padding: '12px 16px', fontWeight: 600, color: COLORS.textDark, fontSize: 13 }}>{u.first_name}</td>
                   <td style={{ padding: '12px 16px', fontSize: 12, color: COLORS.textLight }}>{u.username}</td>
                   <td style={{ padding: '12px 16px', fontSize: 13, color: COLORS.textMid }}>{u.badge_number || '—'}</td>
                   <td style={{ padding: '12px 16px', fontSize: 13, color: COLORS.textMid }}>{u.post_license_number || '—'}</td>
@@ -183,13 +187,16 @@ export default function AdminUsers() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>
           <div style={{ background: COLORS.white, borderRadius: 12, padding: 32, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
             <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.navy, marginBottom: 20 }}>
-              {modal === 'create' ? 'Add New Member' : `Edit — ${editingUser?.full_name}`}
+              {modal === 'create' ? 'Add New Member' : `Edit — ${editingUser?.first_name} ${editingUser?.last_name}`}
             </div>
 
             <form onSubmit={handleSubmit}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <Field label="Full Name" required>
-                  <input style={inputStyle} value={form.full_name} onChange={e => set('full_name', e.target.value)} required />
+                <Field label="First Name" required>
+                  <input style={inputStyle} value={form.first_name} onChange={e => set('first_name', e.target.value)} required />
+                </Field>
+                <Field label="Last Name" required>
+                  <input style={inputStyle} value={form.last_name} onChange={e => set('last_name', e.target.value)} required />
                 </Field>
                 <Field label="Username" required>
                   <input style={inputStyle} value={form.username} onChange={e => set('username', e.target.value)} required disabled={modal === 'edit'} />
@@ -220,7 +227,7 @@ export default function AdminUsers() {
                   <select style={inputStyle} value={form.supervisor_id} onChange={e => set('supervisor_id', e.target.value)}>
                     <option value="">None</option>
                     {supervisors.filter(s => s.id !== editingUser?.id).map(s => (
-                      <option key={s.id} value={s.id}>{s.full_name} ({s.rank})</option>
+                      <option key={s.id} value={s.id}>{s.last_name}, {s.first_name} ({s.rank})</option>
                     ))}
                   </select>
                 </Field>

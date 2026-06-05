@@ -12,7 +12,7 @@ const RANKS = ['Civilian', 'Officer', 'Manager', 'Sergeant', 'Lieutenant', 'Capt
 const ROLES = ['officer', 'supervisor', 'coordinator']
 
 const emptyForm = {
-  username: '', first_name: '', last_name: '', email: '',
+  first_name: '', last_name: '', email: '',
   badge_number: '', post_license_number: '', unit: '',
   rank: 'Officer', role: 'officer', supervisor_id: '', is_active: true,
 }
@@ -67,7 +67,6 @@ export default function AdminUsers() {
 
   const openEdit = (user) => {
     setForm({
-      username: user.username || '',
       first_name: user.first_name || '',
       last_name: user.last_name || '',
       email: user.email || '',
@@ -89,7 +88,7 @@ export default function AdminUsers() {
     setError('')
     setSaving(true)
     try {
-      const payload = { ...form, supervisor_id: form.supervisor_id || null }
+      const payload = { ...form, username: form.email, supervisor_id: form.supervisor_id || null }
       if (modal === 'create') {
         const res = await axios.post('/api/admin/users', payload)
         setUsers(prev => [...prev, res.data.user].sort((a, b) => a.last_name?.localeCompare(b.last_name)))
@@ -112,7 +111,6 @@ export default function AdminUsers() {
     !search ||
     u.first_name?.toLowerCase().includes(search.toLowerCase()) ||
     u.last_name?.toLowerCase().includes(search.toLowerCase()) ||
-    u.username?.toLowerCase().includes(search.toLowerCase()) ||
     u.badge_number?.includes(search) ||
     u.unit?.toLowerCase().includes(search.toLowerCase())
   )
@@ -137,7 +135,7 @@ export default function AdminUsers() {
 
       <div style={{ marginBottom: 16 }}>
         <input
-          placeholder="Search by name, username, badge, or unit..."
+          placeholder="Search by name, badge, or unit..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           style={{ ...inputStyle, maxWidth: 400 }}
@@ -148,7 +146,7 @@ export default function AdminUsers() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
-              {['Last Name', 'First Name', 'Username', 'Badge', 'POST License', 'Unit', 'Rank', 'Role', 'Status', ''].map(h => (
+              {['Last Name', 'First Name', 'Badge', 'POST License', 'Unit', 'Rank', 'Role', 'Status', ''].map(h => (
                 <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: COLORS.textLight, letterSpacing: '0.07em', textTransform: 'uppercase' }}>{h}</th>
               ))}
             </tr>
@@ -160,7 +158,6 @@ export default function AdminUsers() {
                 <tr key={u.id} style={{ borderBottom: i < filtered.length - 1 ? `1px solid ${COLORS.border}` : 'none', opacity: u.is_active ? 1 : 0.5 }}>
                   <td style={{ padding: '12px 16px', fontWeight: 600, color: COLORS.textDark, fontSize: 13 }}>{u.last_name}</td>
                   <td style={{ padding: '12px 16px', fontWeight: 600, color: COLORS.textDark, fontSize: 13 }}>{u.first_name}</td>
-                  <td style={{ padding: '12px 16px', fontSize: 12, color: COLORS.textLight }}>{u.username}</td>
                   <td style={{ padding: '12px 16px', fontSize: 13, color: COLORS.textMid }}>{u.badge_number || '—'}</td>
                   <td style={{ padding: '12px 16px', fontSize: 13, color: COLORS.textMid }}>{u.post_license_number || '—'}</td>
                   <td style={{ padding: '12px 16px', fontSize: 13, color: COLORS.textMid }}>{u.unit || '—'}</td>
@@ -197,9 +194,6 @@ export default function AdminUsers() {
                 </Field>
                 <Field label="Last Name" required>
                   <input style={inputStyle} value={form.last_name} onChange={e => set('last_name', e.target.value)} required />
-                </Field>
-                <Field label="Username" required>
-                  <input style={inputStyle} value={form.username} onChange={e => set('username', e.target.value)} required disabled={modal === 'edit'} />
                 </Field>
                 <Field label="Email">
                   <input type="email" style={inputStyle} value={form.email} onChange={e => set('email', e.target.value)} />

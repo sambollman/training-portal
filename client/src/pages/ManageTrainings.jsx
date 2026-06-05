@@ -140,7 +140,7 @@ export default function ManageTrainings() {
                 <div>
                   <div style={{ color: COLORS.white, fontWeight: 700, fontSize: 16 }}>{selected.title}</div>
                   <div style={{ color: COLORS.silver, fontSize: 12, marginTop: 3 }}>
-                    {selected.session_date ? new Date(selected.session_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
+                    {selected.session_date ? new Date(selected.session_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
                     {selected.location ? ` · ${selected.location}` : ''}
                   </div>
                 </div>

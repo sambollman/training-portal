@@ -66,7 +66,7 @@ router.get('/next-approvers/:rank', requireAuth, async (req, res) => {
 
 // Submit a self-request with reason and first approver
 router.post('/submit', requireAuth, async (req, res) => {
-  const { training_id, reason, first_approver_id } = req.body
+  const { training_id, reason, first_approver_id, training_cost, travel_cost, hotel_cost, per_diem } = req.body
 
   if (!training_id || !first_approver_id) {
     return res.status(400).json({ error: 'Training and first approver are required' })
@@ -100,10 +100,12 @@ router.post('/submit', requireAuth, async (req, res) => {
     // Create enrollment request
     const request = await db.query(`
       INSERT INTO enrollment_requests 
-        (training_id, officer_id, supervisor_id, request_type, status, reason, chain_status)
-      VALUES ($1, $2, $3, 'self_requested', 'pending', $4, 'in_progress')
+        (training_id, officer_id, supervisor_id, request_type, status, reason, chain_status,
+        training_cost, travel_cost, hotel_cost, per_diem)
+      VALUES ($1, $2, $3, 'self_requested', 'pending', $4, 'in_progress', $5, $6, $7, $8)
       RETURNING *
-    `, [training_id, req.user.id, first_approver_id, reason || null])
+    `, [training_id, req.user.id, first_approver_id, reason || null,
+      training_cost || null, travel_cost || null, hotel_cost || null, per_diem || null])
 
     const enrollmentRequest = request.rows[0]
 

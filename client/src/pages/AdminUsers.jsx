@@ -14,7 +14,7 @@ const ROLES = ['officer', 'supervisor', 'coordinator']
 const emptyForm = {
   first_name: '', last_name: '', email: '',
   badge_number: '', post_license_number: '', unit: '',
-  rank: 'Officer', role: 'officer', supervisor_id: '', is_active: true,
+  rank: 'Officer', role: 'officer', is_active: true,
 }
 
 function Field({ label, required, children }) {
@@ -75,7 +75,6 @@ export default function AdminUsers() {
       unit: user.unit || '',
       rank: user.rank || 'Officer',
       role: user.role || 'officer',
-      supervisor_id: user.supervisor_id || '',
       is_active: user.is_active !== false,
     })
     setEditingUser(user)
@@ -106,7 +105,6 @@ export default function AdminUsers() {
     }
   }
 
-  const supervisors = users.filter(u => u.role === 'supervisor' || u.role === 'coordinator')
   const filtered = users.filter(u =>
     !search ||
     u.first_name?.toLowerCase().includes(search.toLowerCase()) ||
@@ -215,14 +213,6 @@ export default function AdminUsers() {
                 <Field label="Portal Role">
                   <select style={inputStyle} value={form.role} onChange={e => set('role', e.target.value)}>
                     {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
-                </Field>
-                <Field label="Supervisor">
-                  <select style={inputStyle} value={form.supervisor_id} onChange={e => set('supervisor_id', e.target.value)}>
-                    <option value="">None</option>
-                    {supervisors.filter(s => s.id !== editingUser?.id).map(s => (
-                      <option key={s.id} value={s.id}>{s.last_name}, {s.first_name} ({s.rank})</option>
-                    ))}
                   </select>
                 </Field>
                 {modal === 'edit' && (

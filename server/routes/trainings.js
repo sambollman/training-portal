@@ -88,10 +88,10 @@ router.get('/:id', requireAuth, async (req, res) => {
 // POST /api/trainings - create a training (coordinator only)
 router.post('/', requireAuth, requireRole('coordinator'), async (req, res) => {
   const {
-    title, category, description, instructor,
-    location, session_date, start_time,
-    duration_hours, seat_capacity, is_required
-  } = req.body;
+  title, category, description, instructor,
+  location, session_date, start_time,
+  duration_hours, seat_capacity, is_required, is_out_of_state
+} = req.body;
 
   if (!title || !session_date) {
     return res.status(400).json({ error: 'Title and session date are required' });
@@ -101,15 +101,15 @@ router.post('/', requireAuth, requireRole('coordinator'), async (req, res) => {
     const result = await db.query(`
       INSERT INTO trainings 
         (title, category, description, instructor, location, 
-         session_date, start_time, duration_hours, seat_capacity, 
-         is_required, created_by)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+        session_date, start_time, duration_hours, seat_capacity, 
+        is_required, is_out_of_state, created_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
       RETURNING *
     `, [
       title, category, description, instructor,
       location, session_date, start_time,
       duration_hours, seat_capacity,
-      is_required || false, req.user.id
+      is_required || false, is_out_of_state || false, req.user.id
     ]);
 
     res.status(201).json({ training: result.rows[0] });

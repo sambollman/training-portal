@@ -90,7 +90,7 @@ router.post('/', requireAuth, requireRole('coordinator'), async (req, res) => {
   const {
   title, category, description, instructor,
   location, session_date, start_time,
-  duration_hours, seat_capacity, is_required, is_out_of_state
+  duration_hours, seat_capacity, is_required, is_out_of_state, training_type
 } = req.body;
 
   if (!title || !session_date) {
@@ -102,14 +102,14 @@ router.post('/', requireAuth, requireRole('coordinator'), async (req, res) => {
       INSERT INTO trainings 
         (title, category, description, instructor, location, 
         session_date, start_time, duration_hours, seat_capacity, 
-        is_required, is_out_of_state, created_by)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+        is_required, is_out_of_state, training_type, created_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
       RETURNING *
     `, [
       title, category, description, instructor,
       location, session_date, start_time,
       duration_hours, seat_capacity,
-      is_required || false, is_out_of_state || false, req.user.id
+      is_required || false, is_out_of_state || false, training_type || 'internal', req.user.id
     ]);
 
     res.status(201).json({ training: result.rows[0] });

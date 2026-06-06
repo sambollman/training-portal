@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 
@@ -6,19 +5,25 @@ const COLORS = {
   navy: '#0D1B2A', gold: '#C9A84C', bg: '#F0F3F7', white: '#FFFFFF',
   success: '#2D6A4F', successLight: '#D8F3DC',
   danger: '#9B2335', dangerLight: '#FDECEA',
+  warning: '#B5621B', warningLight: '#FFF0E0',
   border: '#D1D9E6', textDark: '#0D1B2A', textLight: '#6B7F96', textMid: '#3D5166',
 }
 
 export default function Pending() {
-  const [requests, setRequests] = useState([])
+  const [approvals, setApprovals] = useState([])
   const [loading, setLoading] = useState(true)
-  const [denialModal, setDenialModal] = useState(null)
-  const [denialNote, setDenialNote] = useState('')
+  const [selected, setSelected] = useState(null)
+  const [decision, setDecision] = useState('')
+  const [comment, setComment] = useState('')
+  const [nextApprovers, setNextApprovers] = useState([])
+  const [selectedNextApprover, setSelectedNextApprover] = useState('')
+  const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState(null)
+  const [loadingNext, setLoadingNext] = useState(false)
 
   useEffect(() => {
-    axios.get('/api/requests/pending')
-      .then(res => setRequests(res.data.requests))
+    axios.get('/api/approvals/my-pending')
+      .then(res => setApprovals(res.data.approvals))
       .finally(() => setLoading(false))
   }, [])
 
@@ -27,126 +32,216 @@ export default function Pending() {
     setTimeout(() => setToast(null), 3500)
   }
 
-  const handleApprove = async (requestId) => {
-    try {
-      await axios.patch(`/api/requests/${requestId}/approve`)
-      setRequests(prev => prev.filter(r => r.id !== requestId))
-      showToast('Request approved.')
-    } catch (err) {
-      showToast(err.response?.data?.error || 'Failed to approve', 'error')
+  const handleSelect = async (approval) => {
+    setSelected(approval)
+    setDecision('')
+    setComment('')
+    setSelectedNextApprover('')
+    setNextApprovers([])
+  }
+
+  const handleDecisionChange = async (d) => {
+    setDecision(d)
+    setSelectedNextApprover('')
+
+    const rank = selected?.approver_rank?.toLowerCase()
+    const isOutOfState = selected?.is_out_of_state
+    const isFinal =
+      (rank === 'captain' && !isOutOfState) ||
+      rank === 'assistant chief'
+
+    if (!isFinal) {
+      setLoadingNext(true)
+      try {
+        const res = await axios.get(`/api/approvals/next-approvers/${encodeURIComponent(selected.approver_rank)}`)
+        setNextApprovers(res.data.approvers)
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoadingNext(false)
+      }
+    } else {
+      setNextApprovers([])
     }
   }
 
-  const handleDeny = async () => {
+  const handleSubmit = async () => {
+    if (!decision) { showToast('Please select approve or deny', 'error'); return }
+    if (nextApprovers.length > 0 && !selectedNextApprover) {
+      showToast('Please select who to forward this to', 'error'); return
+    }
+    setSubmitting(true)
     try {
-      await axios.patch(`/api/requests/${denialModal.id}/deny`, { denial_note: denialNote })
-      setRequests(prev => prev.filter(r => r.id !== denialModal.id))
-      setDenialModal(null)
-      setDenialNote('')
-      showToast('Request denied.', 'warning')
+      const res = await axios.post(`/api/approvals/act/${selected.id}`, {
+        decision,
+        comment,
+        next_approver_id: selectedNextApprover || null,
+      })
+      setApprovals(prev => prev.filter(a => a.id !== selected.id))
+      setSelected(null)
+      showToast(res.data.is_final ? 'Decision recorded. Officer has been notified.' : 'Decision recorded. Request forwarded to next approver.')
     } catch (err) {
-      showToast(err.response?.data?.error || 'Failed to deny', 'error')
+      showToast(err.response?.data?.error || 'Failed to submit decision', 'error')
+    } finally {
+      setSubmitting(false)
     }
   }
+
+  const rank = selected?.approver_rank?.toLowerCase()
+  const isOutOfState = selected?.is_out_of_state
+  const isFinal = selected && (
+    (rank === 'captain' && !isOutOfState) ||
+    rank === 'assistant chief'
+  )
 
   if (loading) return <div style={{ padding: 40, color: COLORS.textLight }}>Loading...</div>
 
   return (
-    <div>
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 22, fontWeight: 700, color: COLORS.navy, margin: 0 }}>Pending Approvals</h1>
-        <p style={{ color: COLORS.textLight, fontSize: 13, marginTop: 4 }}>Review and approve or deny training requests from your officers.</p>
-      </div>
+    <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 20, alignItems: 'start' }}>
 
-      {requests.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '60px 20px', color: COLORS.textLight, background: COLORS.white, borderRadius: 10, border: `1px solid ${COLORS.border}` }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>✅</div>
-          <div style={{ fontWeight: 600, fontSize: 15 }}>All caught up!</div>
-          <div style={{ fontSize: 13 }}>No pending requests at this time.</div>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {requests.map(r => (
-            <div key={r.id} style={{
-              background: COLORS.white, border: `1.5px solid ${COLORS.gold}55`,
-              borderRadius: 10, padding: '18px 22px',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                  <div style={{
-                    width: 44, height: 44, borderRadius: '50%', background: '#E8ECF2',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18
-                  }}>👤</div>
-                  <div>
-                    <div style={{ fontWeight: 700, color: COLORS.textDark, fontSize: 15 }}>{r.full_name}</div>
-                    <div style={{ color: COLORS.textLight, fontSize: 12 }}>
-                      Requesting: <strong style={{ color: COLORS.textMid }}>{r.title}</strong>
-                    </div>
-                    <div style={{ color: COLORS.textLight, fontSize: 11, marginTop: 2 }}>
-                      {r.session_date ? (
-                        r.end_date 
-                          ? `${new Date(r.session_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} – ${new Date(r.end_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`
-                          : new Date(r.session_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-                      ) : '—'}
-                      {r.location ? ` · ${r.location}` : ''}
-                      {' · '}Badge #{r.badge_number} · {r.unit}
-                    </div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 10 }}>
-                  <button onClick={() => handleApprove(r.id)} style={{
-                    padding: '8px 18px', borderRadius: 6, fontSize: 13, fontWeight: 700,
-                    cursor: 'pointer', border: 'none', background: COLORS.success, color: COLORS.white,
-                  }}>Approve</button>
-                  <button onClick={() => setDenialModal(r)} style={{
-                    padding: '8px 18px', borderRadius: 6, fontSize: 13, fontWeight: 700,
-                    cursor: 'pointer', border: `1.5px solid ${COLORS.danger}`,
-                    background: 'transparent', color: COLORS.danger,
-                  }}>Deny</button>
+      {/* Left - pending list */}
+      <div>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: COLORS.navy, margin: '0 0 6px' }}>Pending Approvals</h1>
+        <p style={{ color: COLORS.textLight, fontSize: 13, marginBottom: 16 }}>Select a request to review and act on.</p>
+
+        {approvals.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: COLORS.textLight, background: COLORS.white, borderRadius: 10, border: `1px solid ${COLORS.border}` }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
+            <div style={{ fontWeight: 600 }}>All caught up!</div>
+            <div style={{ fontSize: 13 }}>No pending requests.</div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {approvals.map(a => (
+              <div
+                key={a.id}
+                onClick={() => handleSelect(a)}
+                style={{
+                  background: selected?.id === a.id ? COLORS.navy : COLORS.white,
+                  border: `1.5px solid ${selected?.id === a.id ? COLORS.navy : COLORS.gold + '55'}`,
+                  borderRadius: 8, padding: '12px 16px', cursor: 'pointer',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: 13, color: selected?.id === a.id ? COLORS.white : COLORS.textDark }}>{a.officer_name}</div>
+                <div style={{ fontSize: 12, color: selected?.id === a.id ? '#8A9BB0' : COLORS.textMid, marginTop: 2 }}>{a.training_title}</div>
+                <div style={{ fontSize: 11, color: selected?.id === a.id ? '#8A9BB0' : COLORS.textLight, marginTop: 2 }}>
+                  {a.session_date ? new Date(a.session_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                  {' · '}Step {a.step_number}
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
 
-      {denialModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: COLORS.white, borderRadius: 12, padding: 32, maxWidth: 440, width: '90%', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: COLORS.danger, marginBottom: 8 }}>Deny Request</div>
-            <p style={{ color: COLORS.textMid, fontSize: 14, marginBottom: 16 }}>
-              Denying <strong>{denialModal.full_name}</strong>'s request for <strong>{denialModal.title}</strong>. Optionally add a note.
-            </p>
-            <textarea
-              value={denialNote}
-              onChange={e => setDenialNote(e.target.value)}
-              placeholder="Reason for denial (optional)..."
-              style={{ width: '100%', height: 90, borderRadius: 6, border: `1px solid ${COLORS.border}`, padding: 12, fontSize: 13, resize: 'none', boxSizing: 'border-box' }}
-            />
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
-              <button onClick={() => { setDenialModal(null); setDenialNote('') }} style={{
-                padding: '9px 20px', borderRadius: 6, fontSize: 13, fontWeight: 600,
-                cursor: 'pointer', border: `1px solid ${COLORS.border}`, background: COLORS.white, color: COLORS.textMid,
-              }}>Cancel</button>
-              <button onClick={handleDeny} style={{
-                padding: '9px 20px', borderRadius: 6, fontSize: 13, fontWeight: 700,
-                cursor: 'pointer', border: 'none', background: COLORS.danger, color: COLORS.white,
-              }}>Confirm Denial</button>
+      {/* Right - review panel */}
+      <div>
+        {!selected ? (
+          <div style={{ textAlign: 'center', padding: '80px 20px', color: COLORS.textLight, background: COLORS.white, borderRadius: 10, border: `1px solid ${COLORS.border}` }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>👈</div>
+            <div style={{ fontWeight: 600 }}>Select a request to review</div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+            {/* Request details */}
+            <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <div style={{ background: COLORS.navy, padding: '16px 22px' }}>
+                <div style={{ color: COLORS.white, fontWeight: 700, fontSize: 16 }}>{selected.training_title}</div>
+                <div style={{ color: '#8A9BB0', fontSize: 12, marginTop: 3 }}>
+                  {selected.session_date ? new Date(selected.session_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
+                  {selected.location ? ` · ${selected.location}` : ''}
+                  {selected.is_out_of_state ? ' · OUT OF STATE' : ''}
+                </div>
+              </div>
+              <div style={{ padding: '18px 22px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Officer</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.textDark }}>{selected.officer_name}</div>
+                  <div style={{ fontSize: 12, color: COLORS.textLight }}>#{selected.officer_badge} · {selected.officer_rank} · {selected.officer_unit}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Step in Chain</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.textDark }}>Step {selected.step_number}</div>
+                  <div style={{ fontSize: 12, color: COLORS.textLight }}>{isFinal ? 'Final approver' : 'Will forward to next approver'}</div>
+                </div>
+              </div>
+              {selected.reason && (
+                <div style={{ padding: '0 22px 18px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Reason for Attending</div>
+                  <div style={{ fontSize: 14, color: COLORS.textMid, lineHeight: 1.6, background: COLORS.bg, padding: '12px 14px', borderRadius: 6 }}>{selected.reason}</div>
+                </div>
+              )}
+            </div>
+
+            {/* Decision panel */}
+            <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '20px 22px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.navy, marginBottom: 16 }}>Your Decision</div>
+
+              <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+                <button
+                  onClick={() => handleDecisionChange('approved')}
+                  style={{ flex: 1, padding: '10px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: `2px solid ${decision === 'approved' ? COLORS.success : COLORS.border}`, background: decision === 'approved' ? COLORS.successLight : COLORS.white, color: decision === 'approved' ? COLORS.success : COLORS.textMid }}
+                >Approve</button>
+                <button
+                  onClick={() => handleDecisionChange('denied')}
+                  style={{ flex: 1, padding: '10px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: `2px solid ${decision === 'denied' ? COLORS.danger : COLORS.border}`, background: decision === 'denied' ? COLORS.dangerLight : COLORS.white, color: decision === 'denied' ? COLORS.danger : COLORS.textMid }}
+                >Deny</button>
+              </div>
+
+              {decision && !isFinal && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                    Forward to <span style={{ color: COLORS.danger }}>*</span>
+                  </div>
+                  {loadingNext ? (
+                    <div style={{ fontSize: 13, color: COLORS.textLight }}>Loading...</div>
+                  ) : (
+                    <select
+                      value={selectedNextApprover}
+                      onChange={e => setSelectedNextApprover(e.target.value)}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: `1px solid ${COLORS.border}`, fontSize: 13, color: COLORS.textDark, background: COLORS.white }}
+                    >
+                      <option value="">Select next approver...</option>
+                      {nextApprovers.map(a => (
+                        <option key={a.id} value={a.id}>
+                          {a.last_name}, {a.first_name} — {a.rank} {a.unit ? `· ${a.unit}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
+
+              {decision && isFinal && (
+                <div style={{ marginBottom: 16, padding: '10px 14px', background: COLORS.bg, borderRadius: 6, fontSize: 13, color: COLORS.textMid }}>
+                  This is the final step — the officer will be notified of the outcome.
+                </div>
+              )}
+
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Comment (optional)</div>
+                <textarea
+                  value={comment}
+                  onChange={e => setComment(e.target.value)}
+                  placeholder="Add a note for the record..."
+                  style={{ width: '100%', height: 80, borderRadius: 6, border: `1px solid ${COLORS.border}`, padding: 12, fontSize: 13, resize: 'none', boxSizing: 'border-box', color: COLORS.textDark }}
+                />
+              </div>
+
+              <button
+                onClick={handleSubmit}
+                disabled={submitting || !decision}
+                style={{ width: '100%', padding: '11px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: submitting || !decision ? 'default' : 'pointer', border: 'none', background: !decision ? COLORS.border : COLORS.navy, color: !decision ? COLORS.textLight : COLORS.white }}
+              >{submitting ? 'Submitting...' : 'Submit Decision'}</button>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {toast && (
-        <div style={{
-          position: 'fixed', bottom: 28, right: 28,
-          background: toast.type === 'error' ? COLORS.dangerLight : COLORS.navy,
-          color: toast.type === 'error' ? COLORS.danger : COLORS.white,
-          padding: '14px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-          boxShadow: '0 8px 24px rgba(0,0,0,0.18)', maxWidth: 380, zIndex: 200,
-          borderLeft: `4px solid ${toast.type === 'error' ? COLORS.danger : COLORS.gold}`
-        }}>
+        <div style={{ position: 'fixed', bottom: 28, right: 28, background: toast.type === 'error' ? COLORS.dangerLight : COLORS.navy, color: toast.type === 'error' ? COLORS.danger : COLORS.white, padding: '14px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', maxWidth: 380, zIndex: 200, borderLeft: `4px solid ${toast.type === 'error' ? COLORS.danger : COLORS.gold}` }}>
           {toast.msg}
         </div>
       )}

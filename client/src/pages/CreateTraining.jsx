@@ -45,6 +45,7 @@ export default function CreateTraining() {
     no_seat_limit: false,
     cost: '',
     is_required: false,
+    is_out_of_state: false,
     description: '',
   })
 
@@ -184,6 +185,10 @@ export default function CreateTraining() {
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: COLORS.textMid, cursor: 'pointer', marginTop: 8 }}>
                 <input type="checkbox" checked={form.is_required} onChange={e => set('is_required', e.target.checked)} />
                 Mark as required training
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: COLORS.textMid, cursor: 'pointer', marginTop: 8 }}>
+                  <input type="checkbox" checked={form.is_out_of_state} onChange={e => set('is_out_of_state', e.target.checked)} />
+                  Out of state training
               </label>
             </Field>
           </div>

@@ -215,6 +215,7 @@ export default function TrainingDetail() {
           <h1 style={{ color: COLORS.white, fontSize: 22, fontWeight: 700, margin: '0 0 6px' }}>{training.title}</h1>
           <div style={{ display: 'flex', gap: 12 }}>
             {training.is_required && <span style={{ background: '#FFF0E0', color: '#B5621B', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase' }}>Required</span>}
+            {training.is_out_of_state && <span style={{ background: '#E0ECF8', color: '#1A5A8A', fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase' }}>Out of State</span>}
             <span style={{ background: COLORS.navyMid, color: COLORS.silver, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase' }}>{training.training_type}</span>
           </div>
         </div>

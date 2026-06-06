@@ -9,32 +9,101 @@ const COLORS = {
   border: '#D1D9E6', textDark: '#0D1B2A', textLight: '#6B7F96', textMid: '#3D5166',
 }
 
-function StatusBadge({ status }) {
+function StatusBadge({ status, chainStatus }) {
+  if (chainStatus === 'in_progress') {
+    return <span style={{ background: '#FFF8E1', color: '#8A6000', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase' }}>In Review</span>
+  }
   const styles = {
-    pending: { bg: '#FFF8E1', text: '#8A6000', label: 'Pending Approval' },
-    approved: { bg: '#D8F3DC', text: '#2D6A4F', label: 'Approved' },
-    denied: { bg: '#FDECEA', text: '#9B2335', label: 'Denied' },
+    pending: { bg: '#FFF8E1', text: '#8A6000', label: 'Pending' },
+    approved: { bg: COLORS.successLight, text: COLORS.success, label: 'Approved' },
+    denied: { bg: COLORS.dangerLight, text: COLORS.danger, label: 'Denied' },
     enrolled: { bg: '#E0ECF8', text: '#1A5A8A', label: 'Enrolled' },
   }
   const s = styles[status] || styles.pending
+  return <span style={{ background: s.bg, color: s.text, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase' }}>{s.label}</span>
+}
+
+function ChainTimeline({ steps }) {
+  if (!steps || steps.length === 0) return null
   return (
-    <span style={{
-      background: s.bg, color: s.text, fontSize: 11, fontWeight: 700,
-      letterSpacing: '0.06em', padding: '3px 9px', borderRadius: 4,
-      textTransform: 'uppercase',
-    }}>{s.label}</span>
+    <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${COLORS.border}` }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Approval Chain</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {steps.map((step, i) => (
+          <div key={step.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{
+                width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700,
+                background: step.decision === 'approved' ? COLORS.successLight : step.decision === 'denied' ? COLORS.dangerLight : COLORS.bg,
+                color: step.decision === 'approved' ? COLORS.success : step.decision === 'denied' ? COLORS.danger : COLORS.textLight,
+                border: `2px solid ${step.decision === 'approved' ? COLORS.success : step.decision === 'denied' ? COLORS.danger : COLORS.border}`,
+              }}>
+                {step.decision === 'approved' ? '✓' : step.decision === 'denied' ? '✗' : i + 1}
+              </div>
+              {i < steps.length - 1 && <div style={{ width: 2, height: 20, background: COLORS.border, margin: '2px 0' }} />}
+            </div>
+            <div style={{ flex: 1, paddingBottom: 4 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textDark }}>{step.approver_name}</div>
+                  <div style={{ fontSize: 11, color: COLORS.textLight }}>{step.approver_rank}</div>
+                </div>
+                {step.decided_at_central && (
+                  <div style={{ fontSize: 11, color: COLORS.textLight }}>{step.decided_at_central}</div>
+                )}
+              </div>
+              {step.decision && (
+                <div style={{ marginTop: 4 }}>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase',
+                    background: step.decision === 'approved' ? COLORS.successLight : COLORS.dangerLight,
+                    color: step.decision === 'approved' ? COLORS.success : COLORS.danger,
+                  }}>{step.decision}</span>
+                  {step.comment && <div style={{ fontSize: 12, color: COLORS.textMid, marginTop: 4, fontStyle: 'italic' }}>"{step.comment}"</div>}
+                </div>
+              )}
+              {!step.decision && (
+                <div style={{ fontSize: 12, color: COLORS.textLight, marginTop: 4 }}>Awaiting review...</div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
 export default function MySchedule() {
   const [requests, setRequests] = useState([])
+  const [chains, setChains] = useState({})
   const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState(null)
+  const [loadingChain, setLoadingChain] = useState(null)
 
   useEffect(() => {
     axios.get('/api/requests')
       .then(res => setRequests(res.data.requests))
       .finally(() => setLoading(false))
   }, [])
+
+  const handleExpand = async (requestId) => {
+    if (expanded === requestId) {
+      setExpanded(null)
+      return
+    }
+    setExpanded(requestId)
+    if (!chains[requestId]) {
+      setLoadingChain(requestId)
+      try {
+        const res = await axios.get(`/api/approvals/chain/${requestId}`)
+        setChains(prev => ({ ...prev, [requestId]: res.data.steps }))
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoadingChain(null)
+      }
+    }
+  }
 
   const handleWithdraw = async (requestId) => {
     if (!confirm('Withdraw this request?')) return
@@ -64,41 +133,46 @@ export default function MySchedule() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {requests.map(r => (
-            <div key={r.id} style={{
-              background: COLORS.white, border: `1px solid ${COLORS.border}`,
-              borderRadius: 10, padding: '18px 22px',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              boxShadow: '0 1px 4px rgba(0,0,0,0.04)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{
-                  width: 44, height: 44, borderRadius: 10, background: COLORS.navy,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20
-                }}>🎓</div>
-                <div>
-                  <div style={{ fontWeight: 700, color: COLORS.textDark, fontSize: 15 }}>{r.title}</div>
-                  <div style={{ color: COLORS.textLight, fontSize: 12, marginTop: 2 }}>
-                    {r.session_date ? new Date(r.session_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
-                    {r.location ? ` · ${r.location}` : ''}
-                    {' · '}{r.request_type === 'supervisor_enrolled' ? 'Enrolled by supervisor' : 'Self-requested'}
-                  </div>
-                  {r.denial_note && (
-                    <div style={{ fontSize: 12, color: COLORS.danger, marginTop: 4 }}>
-                      Note: {r.denial_note}
+            <div key={r.id} style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+              <div style={{ padding: '18px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 10, background: COLORS.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🎓</div>
+                  <div>
+                    <div style={{ fontWeight: 700, color: COLORS.textDark, fontSize: 15 }}>{r.title}</div>
+                    <div style={{ color: COLORS.textLight, fontSize: 12, marginTop: 2 }}>
+                      {r.session_date ? new Date(r.session_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
+                      {r.location ? ` · ${r.location}` : ''}
+                      {' · '}{r.request_type === 'supervisor_enrolled' ? 'Enrolled by supervisor' : 'Self-requested'}
                     </div>
+                    {r.denial_note && (
+                      <div style={{ fontSize: 12, color: COLORS.danger, marginTop: 4 }}>Note: {r.denial_note}</div>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <StatusBadge status={r.status} chainStatus={r.chain_status} />
+                  {r.request_type === 'self_requested' && (
+                    <button
+                      onClick={() => handleExpand(r.id)}
+                      style={{ fontSize: 12, fontWeight: 600, color: COLORS.navy, background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}
+                    >
+                      {expanded === r.id ? 'Hide Chain' : 'View Chain'}
+                    </button>
+                  )}
+                  {r.status === 'pending' && r.chain_status !== 'in_progress' && (
+                    <button onClick={() => handleWithdraw(r.id)} style={{ padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${COLORS.border}`, background: COLORS.white, color: COLORS.textLight }}>Withdraw</button>
                   )}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                <StatusBadge status={r.status} />
-                {r.status === 'pending' && (
-                  <button onClick={() => handleWithdraw(r.id)} style={{
-                    padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                    cursor: 'pointer', border: `1px solid ${COLORS.border}`,
-                    background: COLORS.white, color: COLORS.textLight,
-                  }}>Withdraw</button>
-                )}
-              </div>
+              {expanded === r.id && (
+                <div style={{ padding: '0 22px 18px' }}>
+                  {loadingChain === r.id ? (
+                    <div style={{ fontSize: 13, color: COLORS.textLight }}>Loading chain...</div>
+                  ) : (
+                    <ChainTimeline steps={chains[r.id]} />
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

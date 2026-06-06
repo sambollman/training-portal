@@ -16,11 +16,17 @@ export default function Layout({ children }) {
   const isSupervisor = user?.role === 'supervisor' || user?.role === 'coordinator'
 
   useEffect(() => {
-    if (isSupervisor) {
+    if (!isSupervisor) return
+
+    const fetchCount = () => {
       axios.get('/api/approvals/my-pending')
         .then(res => setPendingCount(res.data.approvals.length))
         .catch(() => {})
     }
+
+    fetchCount()
+    window.addEventListener('approval-acted', fetchCount)
+    return () => window.removeEventListener('approval-acted', fetchCount)
   }, [isSupervisor])
 
   const handleLogout = async () => {

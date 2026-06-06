@@ -79,6 +79,7 @@ export default function Pending() {
       })
       setApprovals(prev => prev.filter(a => a.id !== selected.id))
       setSelected(null)
+      window.dispatchEvent(new Event('approval-acted'))
       showToast(res.data.is_final ? 'Decision recorded. Officer has been notified.' : 'Decision recorded. Request forwarded to next approver.')
     } catch (err) {
       showToast(err.response?.data?.error || 'Failed to submit decision', 'error')

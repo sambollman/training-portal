@@ -126,18 +126,18 @@ router.put('/:id', requireAuth, requireRole('coordinator'), async (req, res) => 
   try {
     const result = await db.query(`
       UPDATE trainings SET
-        title=$1, category=$2, description=$3, instructor=$4, location=$5,
-        session_date=$6, end_date=$7, start_time=$8, end_time=$9,
-        duration_hours=$10, seat_capacity=$11, no_seat_limit=$12,
-        cost=$13, training_type=$14, is_out_of_state=$15, is_required=$16
-      WHERE id=$17 AND is_archived=false
-      RETURNING *
-    `, [
-      ], [
-        title, category, description, instructor, location,
-        session_date || null, end_date || null, start_time || null, end_time || null,
-        duration_hours || null, seat_capacity || null, no_seat_limit || false,
-        cost || null, training_type, is_required || false, is_out_of_state || false, req.params.id]);
+      title=$1, category=$2, description=$3, instructor=$4, location=$5,
+      session_date=$6, end_date=$7, start_time=$8, end_time=$9,
+      duration_hours=$10, seat_capacity=$11, no_seat_limit=$12,
+      cost=$13, training_type=$14, is_out_of_state=$15, is_required=$16
+    WHERE id=$17 AND is_archived=false
+    RETURNING *
+  `, [
+    title, category, description, instructor, location,
+    session_date || null, end_date || null, start_time || null, end_time || null,
+    duration_hours || null, seat_capacity || null, no_seat_limit || false,
+    cost || null, training_type, is_out_of_state || false, is_required || false, req.params.id
+  ]);
     if (!result.rows[0]) {
       return res.status(404).json({ error: 'Training not found' });
     }

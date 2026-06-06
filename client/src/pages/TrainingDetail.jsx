@@ -20,6 +20,91 @@ function InfoBlock({ label, value }) {
   )
 }
 
+function RequestForm({ trainingId, userRank, onSuccess, onCancel }) {
+  const [reason, setReason] = useState('')
+  const [approvers, setApprovers] = useState([])
+  const [selectedApprover, setSelectedApprover] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    axios.get('/api/approvals/first-approvers')
+      .then(res => setApprovers(res.data.approvers))
+      .catch(() => setError('Could not load approvers'))
+  }, [])
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!selectedApprover) { setError('Please select an approver'); return }
+    setSubmitting(true)
+    setError('')
+    try {
+      const res = await axios.post('/api/approvals/submit', {
+        training_id: trainingId,
+        reason,
+        first_approver_id: selectedApprover,
+      })
+      onSuccess(res.data.request)
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to submit request')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const inputStyle = {
+    width: '100%', padding: '9px 12px', borderRadius: 6,
+    border: `1px solid ${COLORS.border}`, fontSize: 13,
+    color: COLORS.textDark, background: COLORS.white, boxSizing: 'border-box',
+  }
+
+  return (
+    <div style={{ background: COLORS.bg, borderRadius: 8, padding: 20 }}>
+      <div style={{ fontWeight: 700, fontSize: 15, color: COLORS.navy, marginBottom: 16 }}>Request to Attend</div>
+      <form onSubmit={handleSubmit}>
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Why do you want to attend?
+          </label>
+          <textarea
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            placeholder="Explain how this training benefits your role..."
+            style={{ ...inputStyle, height: 80, resize: 'vertical' }}
+          />
+        </div>
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Send request to <span style={{ color: COLORS.danger }}>*</span>
+          </label>
+          <select
+            value={selectedApprover}
+            onChange={e => setSelectedApprover(e.target.value)}
+            required
+            style={inputStyle}
+          >
+            <option value="">Select an approver...</option>
+            {approvers.map(a => (
+              <option key={a.id} value={a.id}>
+                {a.last_name}, {a.first_name} — {a.rank} {a.unit ? `· ${a.unit}` : ''}
+              </option>
+            ))}
+          </select>
+        </div>
+        {error && (
+          <div style={{ background: COLORS.dangerLight, color: COLORS.danger, padding: '10px 14px', borderRadius: 6, fontSize: 13, marginBottom: 14 }}>{error}</div>
+        )}
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button type="button" onClick={onCancel} style={{ padding: '9px 20px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', border: `1px solid ${COLORS.border}`, background: COLORS.white, color: COLORS.textMid }}>Cancel</button>
+          <button type="submit" disabled={submitting} style={{ padding: '9px 20px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: submitting ? 'default' : 'pointer', border: 'none', background: COLORS.navy, color: COLORS.white }}>
+            {submitting ? 'Submitting...' : 'Submit Request'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 export default function TrainingDetail() {
   const { id } = useParams()
   const { user } = useAuth()
@@ -30,6 +115,7 @@ export default function TrainingDetail() {
   const [loading, setLoading] = useState(true)
   const [requesting, setRequesting] = useState(false)
   const [toast, setToast] = useState(null)
+  const [showRequestForm, setShowRequestForm] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -146,20 +232,28 @@ export default function TrainingDetail() {
           </div>
         )}
 
-        {user.role === 'officer' && (
+        {(user.role === 'officer' || user.role === 'supervisor') && (
           <div>
             {myRequest ? (
               <div style={{ padding: '14px 18px', borderRadius: 8, background: myRequest.status === 'approved' ? COLORS.successLight : myRequest.status === 'denied' ? COLORS.dangerLight : '#FFF8E1' }}>
                 <div style={{ fontWeight: 700, fontSize: 14, color: myRequest.status === 'approved' ? COLORS.success : myRequest.status === 'denied' ? COLORS.danger : '#8A6000' }}>
-                  {myRequest.status === 'approved' ? 'Request Approved' : myRequest.status === 'denied' ? 'Request Denied' : 'Pending Approval'}
+                  {myRequest.status === 'approved' ? 'Request Approved' : myRequest.status === 'denied' ? 'Request Denied' : 'Request In Progress'}
                 </div>
                 {myRequest.denial_note && <div style={{ fontSize: 12, color: COLORS.danger, marginTop: 4 }}>Note: {myRequest.denial_note}</div>}
               </div>
             ) : isFull ? (
               <div style={{ padding: '14px 18px', borderRadius: 8, background: COLORS.bg, color: COLORS.textLight, fontWeight: 600, fontSize: 14, textAlign: 'center' }}>This session is full</div>
+            ) : showRequestForm ? (
+              <RequestForm
+                trainingId={id}
+                userId={user.id}
+                userRank={user.rank}
+                onSuccess={(req) => { setMyRequest(req); setShowRequestForm(false); showToast('Request submitted successfully.') }}
+                onCancel={() => setShowRequestForm(false)}
+              />
             ) : (
-              <button onClick={handleRequest} disabled={requesting} style={{ width: '100%', padding: '12px', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: requesting ? 'default' : 'pointer', border: 'none', background: COLORS.navy, color: COLORS.white }}>
-                {requesting ? 'Submitting...' : 'Request to Attend'}
+              <button onClick={() => setShowRequestForm(true)} style={{ width: '100%', padding: '12px', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer', border: 'none', background: COLORS.navy, color: COLORS.white }}>
+                Request to Attend
               </button>
             )}
           </div>

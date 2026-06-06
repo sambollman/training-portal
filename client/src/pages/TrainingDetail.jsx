@@ -20,12 +20,16 @@ function InfoBlock({ label, value }) {
   )
 }
 
-function RequestForm({ trainingId, userRank, onSuccess, onCancel }) {
+function RequestForm({ trainingId, userRank, trainingData, onSuccess, onCancel }) {
   const [reason, setReason] = useState('')
   const [approvers, setApprovers] = useState([])
   const [selectedApprover, setSelectedApprover] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [trainingCost, setTrainingCost] = useState(trainingData?.cost ? parseFloat(trainingData.cost).toFixed(2) : '')
+  const [travelCost, setTravelCost] = useState('')
+  const [hotelCost, setHotelCost] = useState('')
+  const [perDiem, setPerDiem] = useState('')
 
   useEffect(() => {
     axios.get('/api/approvals/first-approvers')
@@ -43,6 +47,10 @@ function RequestForm({ trainingId, userRank, onSuccess, onCancel }) {
         training_id: trainingId,
         reason,
         first_approver_id: selectedApprover,
+        training_cost: trainingCost || null,
+        travel_cost: travelCost || null,
+        hotel_cost: hotelCost || null,
+        per_diem: perDiem || null,
       })
       onSuccess(res.data.request)
     } catch (err) {
@@ -72,6 +80,38 @@ function RequestForm({ trainingId, userRank, onSuccess, onCancel }) {
             placeholder="Explain how this training benefits your role..."
             style={{ ...inputStyle, height: 80, resize: 'vertical' }}
           />
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Estimated Costs</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {[
+              { label: 'Training Cost ($)', value: trainingCost, set: setTrainingCost },
+              { label: 'Travel Cost ($)', value: travelCost, set: setTravelCost },
+              { label: 'Hotel Cost ($)', value: hotelCost, set: setHotelCost },
+              { label: 'Per Diem ($)', value: perDiem, set: setPerDiem },
+            ].map(({ label, value, set }) => (
+              <div key={label}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: COLORS.textLight, marginBottom: 4 }}>{label}</label>
+                <input
+                  type="number" step="0.01" min="0"
+                  value={value}
+                  onChange={e => set(e.target.value)}
+                  style={{ ...inputStyle }}
+                  placeholder="0.00"
+                />
+              </div>
+            ))}
+          </div>
+          {(trainingCost || travelCost || hotelCost || perDiem) && (
+            <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700, color: COLORS.navy }}>
+              Total Estimated: ${(
+                parseFloat(trainingCost || 0) +
+                parseFloat(travelCost || 0) +
+                parseFloat(hotelCost || 0) +
+                parseFloat(perDiem || 0)
+              ).toFixed(2)}
+            </div>
+          )}
         </div>
         <div style={{ marginBottom: 16 }}>
           <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
@@ -248,6 +288,7 @@ export default function TrainingDetail() {
                 trainingId={id}
                 userId={user.id}
                 userRank={user.rank}
+                trainingData={training}
                 onSuccess={(req) => { setMyRequest(req); setShowRequestForm(false); showToast('Request submitted successfully.') }}
                 onCancel={() => setShowRequestForm(false)}
               />

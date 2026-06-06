@@ -174,6 +174,32 @@ export default function Pending() {
                   <div style={{ fontSize: 14, color: COLORS.textMid, lineHeight: 1.6, background: COLORS.bg, padding: '12px 14px', borderRadius: 6 }}>{selected.reason}</div>
                 </div>
               )}
+              {(selected.training_cost || selected.travel_cost || selected.hotel_cost || selected.per_diem) && (
+                <div style={{ padding: '0 22px 18px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Estimated Costs</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    {[
+                      { label: 'Training', val: selected.training_cost },
+                      { label: 'Travel', val: selected.travel_cost },
+                      { label: 'Hotel', val: selected.hotel_cost },
+                      { label: 'Per Diem', val: selected.per_diem },
+                    ].filter(c => c.val).map(({ label, val }) => (
+                      <div key={label} style={{ background: COLORS.bg, padding: '8px 12px', borderRadius: 6 }}>
+                        <div style={{ fontSize: 11, color: COLORS.textLight, fontWeight: 600 }}>{label}</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.textDark }}>${parseFloat(val).toFixed(2)}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700, color: COLORS.navy }}>
+                    Total: ${(
+                      parseFloat(selected.training_cost || 0) +
+                      parseFloat(selected.travel_cost || 0) +
+                      parseFloat(selected.hotel_cost || 0) +
+                      parseFloat(selected.per_diem || 0)
+                    ).toFixed(2)}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Decision panel */}

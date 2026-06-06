@@ -3,6 +3,8 @@ const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const path = require('path');
 const { pool } = require('./db/connection');
+const approvalRoutes = require('./routes/approvals');
+
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -36,6 +38,7 @@ app.use('/api/trainings', trainingRoutes);
 app.use('/api/requests', requestRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/approvals', approvalRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });

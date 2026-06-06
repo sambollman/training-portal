@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import axios from 'axios'
@@ -11,6 +12,16 @@ const COLORS = {
 export default function Layout({ children }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const [pendingCount, setPendingCount] = useState(0)
+  const isSupervisor = user?.role === 'supervisor' || user?.role === 'coordinator'
+
+  useEffect(() => {
+    if (isSupervisor) {
+      axios.get('/api/requests/pending')
+        .then(res => setPendingCount(res.data.requests.length))
+        .catch(() => {})
+    }
+  }, [isSupervisor])
 
   const handleLogout = async () => {
     await axios.post('/api/auth/dev-logout')
@@ -26,8 +37,7 @@ export default function Layout({ children }) {
     transition: 'all 0.15s',
   })
 
-  const isSupervisor = user?.role === 'supervisor' || user?.role === 'coordinator'
-
+  
   return (
     <div style={{ minHeight: '100vh', background: COLORS.bg, fontFamily: 'system-ui, sans-serif' }}>
       <header style={{ background: COLORS.navy, borderBottom: `3px solid ${COLORS.gold}` }}>
@@ -59,7 +69,12 @@ export default function Layout({ children }) {
           <NavLink to="/my-schedule" style={navStyle}>My Schedule</NavLink>
           {isSupervisor && (
             <>
-              <NavLink to="/pending" style={navStyle}>Pending Approvals</NavLink>
+              <NavLink to="/pending" style={navStyle}>
+                Pending Approvals
+                {pendingCount > 0 && (
+                  <span style={{ marginLeft: 6, background: '#9B2335', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 10 }}>{pendingCount}</span>
+                )}
+              </NavLink>
               <NavLink to="/enroll" style={navStyle}>Enroll Officers</NavLink>
               <NavLink to="/all-requests" style={navStyle}>All Requests</NavLink>
            </>

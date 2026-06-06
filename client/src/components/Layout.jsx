@@ -17,8 +17,8 @@ export default function Layout({ children }) {
 
   useEffect(() => {
     if (isSupervisor) {
-      axios.get('/api/requests/pending')
-        .then(res => setPendingCount(res.data.requests.length))
+      axios.get('/api/approvals/my-pending')
+        .then(res => setPendingCount(res.data.approvals.length))
         .catch(() => {})
     }
   }, [isSupervisor])

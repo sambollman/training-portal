@@ -32,7 +32,7 @@ export default function RequestTraining() {
   const [approvers, setApprovers] = useState([])
   const [form, setForm] = useState({
     training_name: '',
-    description: ''
+    description: '',
     organization: '',
     location: '',
     is_out_of_state: false,

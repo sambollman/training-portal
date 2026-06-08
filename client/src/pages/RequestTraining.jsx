@@ -32,6 +32,7 @@ export default function RequestTraining() {
   const [approvers, setApprovers] = useState([])
   const [form, setForm] = useState({
     training_name: '',
+    description: ''
     organization: '',
     location: '',
     is_out_of_state: false,
@@ -98,6 +99,15 @@ export default function RequestTraining() {
 
           <Field label="Training Name" required>
             <input style={inputStyle} value={form.training_name} onChange={e => set('training_name', e.target.value)} required />
+          </Field>
+
+          <Field label="Description">
+            <textarea
+              style={{ ...inputStyle, height: 80, resize: 'vertical' }}
+              value={form.description}
+              onChange={e => set('description', e.target.value)}
+              placeholder="What will this training cover?"
+            />
           </Field>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>

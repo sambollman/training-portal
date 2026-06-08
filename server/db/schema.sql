@@ -77,6 +77,7 @@ CREATE TABLE IF NOT EXISTS external_training_requests (
   start_date DATE,
   end_date DATE,
   duration_hours DECIMAL,
+  description TEXT,
   training_cost DECIMAL(10,2),
   travel_cost DECIMAL(10,2),
   hotel_cost DECIMAL(10,2),

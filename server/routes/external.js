@@ -6,7 +6,7 @@ const { requireAuth } = require('../middleware/auth');
 // Submit a new external training request
 router.post('/submit', requireAuth, async (req, res) => {
   const {
-    training_name, organization, location, is_out_of_state,
+    training_name, description, organization, location, is_out_of_state,
     start_date, end_date, duration_hours,
     training_cost, travel_cost, hotel_cost, per_diem,
     website, reason, first_approver_id
@@ -24,14 +24,14 @@ router.post('/submit', requireAuth, async (req, res) => {
 
     const request = await db.query(`
       INSERT INTO external_training_requests (
-        officer_id, training_name, organization, location, is_out_of_state,
+        officer_id, training_name, description, organization, location, is_out_of_state,
         start_date, end_date, duration_hours,
         training_cost, travel_cost, hotel_cost, per_diem,
         website, reason, chain_status
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'in_progress')
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15, 'in_progress')
       RETURNING *
     `, [
-      req.user.id, training_name, organization, location, is_out_of_state || false,
+      req.user.id, training_name, description || null, organization, location, is_out_of_state || false,
       start_date || null, end_date || null, duration_hours || null,
       training_cost || null, travel_cost || null, hotel_cost || null, per_diem || null,
       website || null, reason || null

@@ -73,6 +73,7 @@ export default function Layout({ children }) {
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', display: 'flex' }}>
           <NavLink to="/trainings" style={navStyle}>Available Trainings</NavLink>
           <NavLink to="/my-schedule" style={navStyle}>My Schedule</NavLink>
+          <NavLink to="/request-training" style={navStyle}>Request a Training</NavLink>
           {isSupervisor && (
             <>
               <NavLink to="/pending" style={navStyle}>

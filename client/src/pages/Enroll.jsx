@@ -166,7 +166,7 @@ export default function Enroll() {
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     placeholder="Type a name, badge number, or unit..."
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: `1px solid ${COLORS.border}`, fontSize: 13, color: COLORS.textDark, boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: `1px solid ${COLORS.border}`, fontSize: 13, color: COLORS.textDark, background: COLORS.white, boxSizing: 'border-box' }}
                   />
                   {searching && <div style={{ position: 'absolute', right: 12, top: 10, fontSize: 12, color: COLORS.textLight }}>Searching...</div>}
                 </div>

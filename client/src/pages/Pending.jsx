@@ -261,7 +261,7 @@ export default function Pending() {
                   value={comment}
                   onChange={e => setComment(e.target.value)}
                   placeholder="Add a note for the record..."
-                  style={{ width: '100%', height: 80, borderRadius: 6, border: `1px solid ${COLORS.border}`, padding: 12, fontSize: 13, resize: 'none', boxSizing: 'border-box', color: COLORS.textDark }}
+                  style={{ width: '100%', height: 80, borderRadius: 6, border: `1px solid ${COLORS.border}`, padding: 12, fontSize: 13, resize: 'none', boxSizing: 'border-box', color: COLORS.textDark, background: COLORS.white }}
                 />
               </div>
 

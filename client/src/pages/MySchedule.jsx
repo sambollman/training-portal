@@ -81,29 +81,45 @@ export default function MySchedule() {
   const [loadingChain, setLoadingChain] = useState(null)
 
   useEffect(() => {
-    axios.get('/api/requests')
-      .then(res => setRequests(res.data.requests))
-      .finally(() => setLoading(false))
+    Promise.all([
+      axios.get('/api/requests'),
+      axios.get('/api/external/my-requests'),
+    ]).then(([rr, er]) => {
+      const portalRequests = rr.data.requests.map(r => ({ ...r, source: 'portal' }))
+      const externalRequests = er.data.requests.map(r => ({
+        ...r,
+        source: 'external',
+        title: r.training_name,
+        session_date: r.start_date,
+        location: r.location,
+        request_type: 'self_requested',
+      }))
+      setRequests([...portalRequests, ...externalRequests].sort((a, b) => new Date(a.session_date) - new Date(b.session_date)))
+    }).finally(() => setLoading(false))
   }, [])
 
-  const handleExpand = async (requestId) => {
-    if (expanded === requestId) {
-      setExpanded(null)
-      return
-    }
-    setExpanded(requestId)
-    if (!chains[requestId]) {
-      setLoadingChain(requestId)
-      try {
-        const res = await axios.get(`/api/approvals/chain/${requestId}`)
-        setChains(prev => ({ ...prev, [requestId]: res.data.steps }))
-      } catch (err) {
-        console.error(err)
-      } finally {
-        setLoadingChain(null)
-      }
+  const handleExpand = async (request) => {
+  const requestId = request.id
+  if (expanded === requestId) {
+    setExpanded(null)
+    return
+  }
+  setExpanded(requestId)
+  if (!chains[requestId]) {
+    setLoadingChain(requestId)
+    try {
+      const endpoint = request.source === 'external'
+        ? `/api/external/chain/${requestId}`
+        : `/api/approvals/chain/${requestId}`
+      const res = await axios.get(endpoint)
+      setChains(prev => ({ ...prev, [requestId]: res.data.steps }))
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoadingChain(null)
     }
   }
+}
 
   const handleWithdraw = async (requestId) => {
     if (!confirm('Withdraw this request?')) return
@@ -142,7 +158,7 @@ export default function MySchedule() {
                     <div style={{ color: COLORS.textLight, fontSize: 12, marginTop: 2 }}>
                       {r.session_date ? new Date(r.session_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
                       {r.location ? ` · ${r.location}` : ''}
-                      {' · '}{r.request_type === 'supervisor_enrolled' ? 'Enrolled by supervisor' : 'Self-requested'}
+                      {' · '}{r.source === 'external' ? 'External training request' : r.request_type === 'supervisor_enrolled' ? 'Enrolled by supervisor' : 'Self-requested'}
                     </div>
                     {r.denial_note && (
                       <div style={{ fontSize: 12, color: COLORS.danger, marginTop: 4 }}>Note: {r.denial_note}</div>
@@ -153,7 +169,7 @@ export default function MySchedule() {
                   <StatusBadge status={r.status} chainStatus={r.chain_status} />
                   {r.request_type === 'self_requested' && (
                     <button
-                      onClick={() => handleExpand(r.id)}
+                      onClick={() => handleExpand(r)}
                       style={{ fontSize: 12, fontWeight: 600, color: COLORS.navy, background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '5px 12px', cursor: 'pointer' }}
                     >
                       {expanded === r.id ? 'Hide Chain' : 'View Chain'}

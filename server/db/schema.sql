@@ -66,23 +66,44 @@ CREATE TABLE IF NOT EXISTS enrollment_requests (
   UNIQUE(training_id, officer_id)
 );
 
-CREATE TABLE IF NOT EXISTS enrollment_requests (
+-- External training requests (self-reported, not from portal listings)
+CREATE TABLE IF NOT EXISTS external_training_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  training_id UUID NOT NULL REFERENCES trainings(id),
   officer_id UUID NOT NULL REFERENCES users(id),
-  supervisor_id UUID REFERENCES users(id),
-  request_type VARCHAR NOT NULL DEFAULT 'self_requested',
-  status VARCHAR NOT NULL DEFAULT 'pending',
+  training_name VARCHAR NOT NULL,
+  organization VARCHAR,
+  location VARCHAR,
+  is_out_of_state BOOLEAN DEFAULT false,
+  start_date DATE,
+  end_date DATE,
+  duration_hours DECIMAL,
+  training_cost DECIMAL(10,2),
+  travel_cost DECIMAL(10,2),
+  hotel_cost DECIMAL(10,2),
+  per_diem DECIMAL(10,2),
+  website VARCHAR,
   reason TEXT,
+  status VARCHAR DEFAULT 'pending',
   chain_status VARCHAR DEFAULT 'pending',
-  denial_note TEXT,
   attended BOOLEAN,
-  reminder_sent BOOLEAN DEFAULT false,
-  acted_on_at TIMESTAMPTZ,
-  acted_on_by UUID REFERENCES users(id),
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(training_id, officer_id)
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Approval chain steps
+CREATE TABLE IF NOT EXISTS approval_steps (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  enrollment_request_id UUID REFERENCES enrollment_requests(id) ON DELETE CASCADE,
+  external_request_id UUID REFERENCES external_training_requests(id) ON DELETE CASCADE,
+  step_number INTEGER NOT NULL,
+  approver_id UUID NOT NULL REFERENCES users(id),
+  approver_name VARCHAR,
+  approver_rank VARCHAR,
+  decision VARCHAR,
+  comment TEXT,
+  next_approver_id UUID REFERENCES users(id),
+  decided_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- Training file attachments

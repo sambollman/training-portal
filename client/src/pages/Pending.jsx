@@ -22,9 +22,14 @@ export default function Pending() {
   const [loadingNext, setLoadingNext] = useState(false)
 
   useEffect(() => {
-    axios.get('/api/approvals/my-pending')
-      .then(res => setApprovals(res.data.approvals))
-      .finally(() => setLoading(false))
+    Promise.all([
+      axios.get('/api/approvals/my-pending'),
+      axios.get('/api/external/my-pending'),
+    ]).then(([pr, er]) => {
+      const portal = pr.data.approvals.map(a => ({ ...a, source: 'portal', display_title: a.training_title }))
+      const external = er.data.approvals.map(a => ({ ...a, source: 'external', display_title: a.training_name }))
+      setApprovals([...portal, ...external].sort((a, b) => new Date(a.created_at) - new Date(b.created_at)))
+    }).finally(() => setLoading(false))
   }, [])
 
   const showToast = (msg, type = 'success') => {
@@ -72,7 +77,10 @@ export default function Pending() {
     }
     setSubmitting(true)
     try {
-      const res = await axios.post(`/api/approvals/act/${selected.id}`, {
+      const endpoint = selected.source === 'external'
+        ? `/api/external/act/${selected.id}`
+        : `/api/approvals/act/${selected.id}`
+        const res = await axios.post(endpoint, {
         decision,
         comment,
         next_approver_id: selectedNextApprover || null,
@@ -125,7 +133,7 @@ export default function Pending() {
                 }}
               >
                 <div style={{ fontWeight: 700, fontSize: 13, color: selected?.id === a.id ? COLORS.white : COLORS.textDark }}>{a.officer_name}</div>
-                <div style={{ fontSize: 12, color: selected?.id === a.id ? '#8A9BB0' : COLORS.textMid, marginTop: 2 }}>{a.training_title}</div>
+                <div style={{ fontSize: 12, color: selected?.id === a.id ? '#8A9BB0' : COLORS.textMid, marginTop: 2 }}>{a.display_title}</div>
                 <div style={{ fontSize: 11, color: selected?.id === a.id ? '#8A9BB0' : COLORS.textLight, marginTop: 2 }}>
                   {a.session_date ? new Date(a.session_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                   {' · '}Step {a.step_number}
@@ -149,7 +157,7 @@ export default function Pending() {
             {/* Request details */}
             <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
               <div style={{ background: COLORS.navy, padding: '16px 22px' }}>
-                <div style={{ color: COLORS.white, fontWeight: 700, fontSize: 16 }}>{selected.training_title}</div>
+                <div style={{ color: COLORS.white, fontWeight: 700, fontSize: 16 }}>{selected.display_title}</div>
                 <div style={{ color: '#8A9BB0', fontSize: 12, marginTop: 3 }}>
                   {selected.session_date ? new Date(selected.session_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
                   {selected.location ? ` · ${selected.location}` : ''}

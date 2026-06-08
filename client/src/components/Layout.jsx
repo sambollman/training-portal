@@ -19,9 +19,12 @@ export default function Layout({ children }) {
     if (!isSupervisor) return
 
     const fetchCount = () => {
-      axios.get('/api/approvals/my-pending')
-        .then(res => setPendingCount(res.data.approvals.length))
-        .catch(() => {})
+      Promise.all([
+        axios.get('/api/approvals/my-pending'),
+        axios.get('/api/external/my-pending'),
+      ]).then(([pr, er]) => {
+        setPendingCount(pr.data.approvals.length + er.data.approvals.length)
+      }).catch(() => {})
     }
 
     fetchCount()

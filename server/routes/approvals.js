@@ -324,4 +324,23 @@ router.get('/my-history', requireAuth, async (req, res) => {
   }
 })
 
+// Get full chain history for a request (for approvers to see previous decisions)
+router.get('/history/:requestId', requireAuth, async (req, res) => {
+  try {
+    const steps = await db.query(`
+      SELECT ap.*,
+        to_char(ap.decided_at AT TIME ZONE 'America/Chicago', 'MM/DD/YYYY HH12:MI AM') as decided_at_central
+      FROM approval_steps ap
+      WHERE ap.enrollment_request_id = $1
+      AND ap.decision IS NOT NULL
+      ORDER BY ap.step_number ASC
+    `, [req.params.requestId])
+
+    res.json({ steps: steps.rows })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Failed to fetch history' })
+  }
+})
+
 module.exports = router

@@ -20,6 +20,7 @@ export default function Pending() {
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState(null)
   const [loadingNext, setLoadingNext] = useState(false)
+  const [previousSteps, setPreviousSteps] = useState([])
 
   useEffect(() => {
     Promise.all([
@@ -43,7 +44,19 @@ export default function Pending() {
     setComment('')
     setSelectedNextApprover('')
     setNextApprovers([])
+     setPreviousSteps([])
+
+    try {
+      const endpoint = approval.source === 'external'
+        ? `/api/external/history/${approval.external_request_id}`
+        : `/api/approvals/history/${approval.enrollment_request_id}`
+      const res = await axios.get(endpoint)
+      setPreviousSteps(res.data.steps)
+    } catch (err) {
+      console.error(err)
+    }
   }
+  
 
   const handleDecisionChange = async (d) => {
     setDecision(d)
@@ -209,6 +222,43 @@ export default function Pending() {
                 </div>
               )}
             </div>
+
+            {previousSteps.length > 0 && (
+              <div style={{ padding: '0 22px 18px' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Previous Decisions</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {previousSteps.map(step => (
+                      <div key={step.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 14px', background: COLORS.bg, borderRadius: 6 }}>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700,
+                        background: step.decision === 'approved' ? COLORS.successLight : COLORS.dangerLight,
+                        color: step.decision === 'approved' ? COLORS.success : COLORS.danger,
+                      }}>
+                        {step.decision === 'approved' ? '✓' : '✗'}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textDark }}>{step.approver_name}</div>
+                            <div style={{ fontSize: 11, color: COLORS.textLight }}>{step.approver_rank}</div>
+                          </div>
+                          <div style={{ fontSize: 11, color: COLORS.textLight }}>{step.decided_at_central}</div>
+                        </div>
+                        <div style={{ marginTop: 4 }}>
+                          <span style={{
+                            fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase',
+                            background: step.decision === 'approved' ? COLORS.successLight : COLORS.dangerLight,
+                            color: step.decision === 'approved' ? COLORS.success : COLORS.danger,
+                          }}>{step.decision}</span>
+                          {step.comment && <div style={{ fontSize: 12, color: COLORS.textMid, marginTop: 4, fontStyle: 'italic' }}>"{step.comment}"</div>}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Decision panel */}
             <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '20px 22px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>

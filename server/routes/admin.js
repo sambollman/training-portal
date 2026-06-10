@@ -3,9 +3,7 @@ const router = express.Router();
 const db = require('../db/connection');
 const { requireAuth, requireRole } = require('../middleware/auth');
 
-router.use(requireAuth, requireRole('coordinator'));
-
-router.get('/users', async (req, res) => {
+router.get('/users', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
   try {
     const { search } = req.query
     let query, params
@@ -42,7 +40,7 @@ router.get('/users', async (req, res) => {
   }
 })
 
-router.post('/users', async (req, res) => {
+router.post('/users', requireAuth, requireRole('coordinator'), async (req, res) => {
   const { username, first_name, last_name, email, badge_number, post_license_number, unit, rank, role, supervisor_id } = req.body;
 
   if (!username || !first_name || !last_name) {
@@ -72,7 +70,7 @@ router.post('/users', async (req, res) => {
   }
 });
 
-router.put('/users/:id', async (req, res) => {
+router.put('/users/:id', requireAuth, requireRole('coordinator'), async (req, res) => {
   const { first_name, last_name, email, badge_number, post_license_number, unit, rank, role, supervisor_id, is_active } = req.body;
 
   const full_name = `${first_name} ${last_name}`;
@@ -104,7 +102,7 @@ router.put('/users/:id', async (req, res) => {
   }
 });
 
-router.get('/users/:id', async (req, res) => {
+router.get('/users/:id', requireAuth, requireRole('coordinator'), async (req, res) => {
   try {
     const result = await db.query('SELECT * FROM users WHERE id = $1', [req.params.id]);
     if (!result.rows[0]) {

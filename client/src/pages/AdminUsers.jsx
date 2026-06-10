@@ -144,7 +144,7 @@ export default function AdminUsers() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
-              {['Last Name', 'First Name', 'Badge', 'POST License', 'Unit', 'Rank', 'Role', 'Status', ''].map(h => (
+              {['Last Name', 'First Name', 'Badge', 'ND.gov Username', 'Unit', 'Rank', 'Role', 'Status', ''].map(h => (
                 <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: COLORS.textLight, letterSpacing: '0.07em', textTransform: 'uppercase' }}>{h}</th>
               ))}
             </tr>
@@ -199,7 +199,7 @@ export default function AdminUsers() {
                 <Field label="Badge Number">
                   <input style={inputStyle} value={form.badge_number} onChange={e => set('badge_number', e.target.value)} />
                 </Field>
-                <Field label="POST License Number">
+                <Field label="ND.gov Username">
                   <input style={inputStyle} value={form.post_license_number} onChange={e => set('post_license_number', e.target.value)} />
                 </Field>
                 <Field label="Unit / Assignment">

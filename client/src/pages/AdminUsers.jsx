@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 
 const COLORS = {
@@ -35,6 +36,7 @@ const inputStyle = {
 }
 
 export default function AdminUsers() {
+  const navigate = useNavigate()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -169,7 +171,10 @@ export default function AdminUsers() {
                     </span>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    <button onClick={() => openEdit(u)} style={{ fontSize: 12, fontWeight: 600, color: COLORS.navy, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Edit</button>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      <button onClick={() => openEdit(u)} style={{ fontSize: 12, fontWeight: 600, color: COLORS.navy, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Edit</button>
+                      <button onClick={() => navigate(`/transcript/${u.id}`)} style={{ fontSize: 12, fontWeight: 600, color: COLORS.gold, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Transcript</button>
+                  </div>
                   </td>
                 </tr>
               )

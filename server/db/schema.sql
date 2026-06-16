@@ -119,6 +119,40 @@ CREATE TABLE IF NOT EXISTS training_files (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Training records (transcript)
+CREATE TABLE IF NOT EXISTS training_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  officer_id UUID NOT NULL REFERENCES users(id),
+  training_title VARCHAR NOT NULL,
+  training_date DATE,
+  completion_date DATE,
+  hours DECIMAL,
+  status VARCHAR DEFAULT 'completed',
+  certified BOOLEAN DEFAULT false,
+  certification_name VARCHAR,
+  certification_expiration DATE,
+  score VARCHAR,
+  remarks TEXT,
+  source VARCHAR DEFAULT 'portal',
+  enrollment_request_id UUID REFERENCES enrollment_requests(id),
+  external_request_id UUID REFERENCES external_training_requests(id),
+  created_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Training certificates (attached to records)
+CREATE TABLE IF NOT EXISTS training_certificates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  training_record_id UUID NOT NULL REFERENCES training_records(id) ON DELETE CASCADE,
+  filename VARCHAR NOT NULL,
+  original_name VARCHAR NOT NULL,
+  mimetype VARCHAR,
+  size INTEGER,
+  uploaded_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Auto-update updated_at on any row change
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$

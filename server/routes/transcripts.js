@@ -67,23 +67,29 @@ router.get('/:officerId', requireAuth, async (req, res) => {
 // PUT /api/transcript/record/:recordId - update a training record
 router.put('/record/:recordId', requireAuth, async (req, res) => {
   const {
-    training_title, training_date, completion_date, hours,
+    training_title, training_type, training_date, end_date, completion_date,
+    location, instructor, hours, cost,
     status, certified, certification_name, certification_expiration,
-    score, remarks
+    certification_hours, score, remarks
   } = req.body;
 
   try {
     const result = await db.query(`
       UPDATE training_records SET
-        training_title = $1, training_date = $2, completion_date = $3,
-        hours = $4, status = $5, certified = $6, certification_name = $7,
-        certification_expiration = $8, score = $9, remarks = $10
-      WHERE id = $11
+        training_title = $1, training_type = $2, training_date = $3,
+        end_date = $4, completion_date = $5, location = $6,
+        instructor = $7, hours = $8, cost = $9, status = $10,
+        certified = $11, certification_name = $12,
+        certification_expiration = $13, certification_hours = $14,
+        score = $15, remarks = $16
+      WHERE id = $17
       RETURNING *
     `, [
-      training_title, training_date || null, completion_date || null,
-      hours || null, status || 'completed', certified || false,
-      certification_name || null, certification_expiration || null,
+      training_title, training_type || 'internal',
+      training_date || null, end_date || null, completion_date || null,
+      location || null, instructor || null, hours || null, cost || null,
+      status || 'attended', certified || false, certification_name || null,
+      certification_expiration || null, certification_hours || null,
       score || null, remarks || null, req.params.recordId
     ]);
 
@@ -101,9 +107,10 @@ router.put('/record/:recordId', requireAuth, async (req, res) => {
 // POST /api/transcript/:officerId/record - manually add a training record
 router.post('/:officerId/record', requireAuth, async (req, res) => {
   const {
-    training_title, training_date, completion_date, hours,
+    training_title, training_type, training_date, end_date, completion_date,
+    location, instructor, hours, cost,
     status, certified, certification_name, certification_expiration,
-    score, remarks
+    certification_hours, score, remarks
   } = req.body;
 
   if (!training_title) {
@@ -113,17 +120,19 @@ router.post('/:officerId/record', requireAuth, async (req, res) => {
   try {
     const result = await db.query(`
       INSERT INTO training_records (
-        officer_id, training_title, training_date, completion_date,
-        hours, status, certified, certification_name, certification_expiration,
-        score, remarks, source, created_by
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'manual',$12)
+        officer_id, training_title, training_type, training_date, end_date,
+        completion_date, location, instructor, hours, cost, status,
+        certified, certification_name, certification_expiration,
+        certification_hours, score, remarks, source, created_by
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'manual',$18)
       RETURNING *
     `, [
-      req.params.officerId, training_title, training_date || null,
-      completion_date || null, hours || null, status || 'completed',
-      certified || false, certification_name || null,
-      certification_expiration || null, score || null,
-      remarks || null, req.user.id
+      req.params.officerId, training_title, training_type || 'internal',
+      training_date || null, end_date || null, completion_date || null,
+      location || null, instructor || null, hours || null, cost || null,
+      status || 'attended', certified || false, certification_name || null,
+      certification_expiration || null, certification_hours || null,
+      score || null, remarks || null, req.user.id
     ]);
 
     res.status(201).json({ record: result.rows[0] });

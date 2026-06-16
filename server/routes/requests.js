@@ -207,6 +207,39 @@ router.patch('/:id/attendance', requireAuth, requireRole('supervisor', 'coordina
       return res.status(404).json({ error: 'Request not found' });
     }
 
+    const request = result.rows[0];
+
+    if (attended) {
+      const training = await db.query('SELECT * FROM trainings WHERE id = $1', [request.training_id]);
+      const t = training.rows[0];
+
+      const existing = await db.query(
+        'SELECT id FROM training_records WHERE enrollment_request_id = $1',
+        [request.id]
+      );
+
+      if (existing.rows.length === 0 && t) {
+        await db.query(`
+          INSERT INTO training_records (
+            officer_id, training_title, training_date, hours,
+            source, enrollment_request_id, created_by
+          ) VALUES ($1, $2, $3, $4, 'portal', $5, $6)
+        `, [
+          request.officer_id,
+          t.title,
+          t.session_date,
+          t.duration_hours,
+          request.id,
+          req.user.id
+        ]);
+      }
+    } else {
+      await db.query(
+        'DELETE FROM training_records WHERE enrollment_request_id = $1',
+        [request.id]
+      );
+    }
+
     res.json({ request: result.rows[0] });
   } catch (err) {
     console.error(err);

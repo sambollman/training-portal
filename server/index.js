@@ -33,6 +33,7 @@ const requestRoutes = require('./routes/requests');
 const userRoutes = require('./routes/users');
 const adminRoutes = require('./routes/admin');
 const externalRoutes = require('./routes/external');
+const transcriptRoutes = require('./routes/transcript');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/trainings', trainingRoutes);
@@ -41,6 +42,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/approvals', approvalRoutes);
 app.use('/api/external', externalRoutes);
+app.use('/api/transcript', transcriptRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });

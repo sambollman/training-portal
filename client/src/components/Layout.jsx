@@ -77,6 +77,7 @@ export default function Layout({ children }) {
           <NavLink to="/trainings" style={navStyle}>Available Trainings</NavLink>
           <NavLink to="/my-schedule" style={navStyle}>My Schedule</NavLink>
           <NavLink to="/request-training" style={navStyle}>Request a Training</NavLink>
+          <NavLink to="/transcript" style={navStyle}>My Transcript</NavLink>
           {isSupervisor && (
             <>
               <NavLink to="/pending" style={navStyle}>

@@ -13,6 +13,7 @@ import EditTraining from './pages/EditTraining'
 import TrainingDetail from './pages/TrainingDetail'
 import AdminUsers from './pages/AdminUsers'
 import RequestTraining from './pages/RequestTraining'
+import Transcript from './pages/Transcript'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -28,6 +29,8 @@ export default function App() {
         <Route path="/my-schedule" element={<MySchedule />} />
         <Route path="/trainings/:id" element={<TrainingDetail />} />
         <Route path="/request-training" element={<RequestTraining />} />
+        <Route path="/transcript" element={<Transcript />} />
+        <Route path="/transcript/:officerId" element={<Transcript />} />  
         {(user.role === 'supervisor' || user.role === 'coordinator') && (
   <>
     <Route path="/pending" element={<Pending />} />

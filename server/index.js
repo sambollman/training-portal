@@ -33,7 +33,7 @@ const requestRoutes = require('./routes/requests');
 const userRoutes = require('./routes/users');
 const adminRoutes = require('./routes/admin');
 const externalRoutes = require('./routes/external');
-const transcriptRoutes = require('./routes/transcript');
+const transcriptRoutes = require('./routes/transcripts');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/trainings', trainingRoutes);

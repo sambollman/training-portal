@@ -32,6 +32,7 @@ router.get('/:officerId', requireAuth, async (req, res) => {
     const records = await db.query(`
       SELECT tr.*,
         to_char(tr.training_date, 'YYYY-MM-DD') as training_date,
+        to_char(tr.end_date, 'YYYY-MM-DD') as end_date,
         to_char(tr.completion_date, 'YYYY-MM-DD') as completion_date,
         to_char(tr.certification_expiration, 'YYYY-MM-DD') as certification_expiration
       FROM training_records tr

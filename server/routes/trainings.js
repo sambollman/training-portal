@@ -179,22 +179,23 @@ router.get('/:id/roster', requireAuth, requireRole('supervisor', 'coordinator'),
 
     const enrollments = await db.query(`
       SELECT 
-        u.full_name, u.badge_number, u.rank, u.unit,
-        er.request_type, er.status, er.attended
+        u.post_license_number,
+        er.attended
       FROM enrollment_requests er
       JOIN users u ON er.officer_id = u.id
-      WHERE er.training_id=$1 AND er.attended = true
-      ORDER BY u.full_name ASC
+      WHERE er.training_id = $1 AND er.attended = true
+      ORDER BY u.last_name ASC, u.first_name ASC
     `, [req.params.id]);
 
     const t = training.rows[0];
+    const startDate = t.session_date ? new Date(t.session_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : '';
+    const endDate = t.end_date ? new Date(t.end_date).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : startDate;
+
     const lines = [];
-    lines.push('Full Name,Badge Number,Rank,Unit,Enrollment Type,Status,Attended');
+    lines.push('Username,Section,Status,StartDate,EndDate,ExitDate,Grade,Assignments,AssignmentsCompleted,cf_GunQual');
 
     for (const row of enrollments.rows) {
-      lines.push(
-        `"${row.full_name}","${row.badge_number}","${row.rank}","${row.unit}","${row.request_type}","${row.status}","${row.attended === true ? 'Yes' : row.attended === false ? 'No' : 'N/A'}"`
-      );
+      lines.push(`"${row.post_license_number || ''}","${t.title}","COMPLETED","${startDate}","${endDate}","${endDate}","100","","",""`);
     }
 
     const filename = `${t.title.replace(/[^a-z0-9]/gi, '_')}_roster.csv`;

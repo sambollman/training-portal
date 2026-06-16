@@ -16,18 +16,27 @@ const inputStyle = {
   color: COLORS.textDark, background: COLORS.white, boxSizing: 'border-box',
 }
 
+const STATUS_OPTIONS = ['Attended', 'Partial Attendance', 'Did Not Attend']
+const TYPE_OPTIONS = ['internal', 'external']
+
 function RecordRow({ record, onUpdate, onUpload, onDeleteCert }) {
   const [editing, setEditing] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [form, setForm] = useState({
     training_title: record.training_title || '',
+    training_type: record.training_type || 'internal',
     training_date: record.training_date || '',
+    end_date: record.end_date || '',
     completion_date: record.completion_date || '',
+    location: record.location || '',
+    instructor: record.instructor || '',
     hours: record.hours || '',
-    status: record.status || 'completed',
+    cost: record.cost || '',
+    status: record.status || 'Attended',
     certified: record.certified || false,
     certification_name: record.certification_name || '',
     certification_expiration: record.certification_expiration || '',
+    certification_hours: record.certification_hours || '',
     score: record.score || '',
     remarks: record.remarks || '',
   })
@@ -54,22 +63,34 @@ function RecordRow({ record, onUpdate, onUpload, onDeleteCert }) {
   const sourceBg = record.source === 'portal' ? '#E0ECF8' : record.source === 'external' ? '#FFF0E0' : COLORS.bg
   const sourceColor = record.source === 'portal' ? '#1A5A8A' : record.source === 'external' ? '#B5621B' : COLORS.textMid
 
+  const statusColor = (status) => {
+    if (status === 'Attended') return { bg: COLORS.successLight, text: COLORS.success }
+    if (status === 'Did Not Attend') return { bg: COLORS.dangerLight, text: COLORS.danger }
+    return { bg: '#FFF8E1', text: '#8A6000' }
+  }
+  const sc = statusColor(record.status)
+
   return (
     <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', marginBottom: 12, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
       <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 15, fontWeight: 700, color: COLORS.textDark }}>{record.training_title}</span>
             <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase', background: sourceBg, color: sourceColor }}>{sourceLabel}</span>
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase', background: sc.bg, color: sc.text }}>{record.status || 'Attended'}</span>
             {record.certified && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase', background: COLORS.successLight, color: COLORS.success }}>Certified</span>}
           </div>
-          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
             {record.training_date && <div style={{ fontSize: 12, color: COLORS.textLight }}><strong>Date:</strong> {new Date(record.training_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
+            {record.end_date && <div style={{ fontSize: 12, color: COLORS.textLight }}><strong>End:</strong> {new Date(record.end_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
+            {record.location && <div style={{ fontSize: 12, color: COLORS.textLight }}><strong>Location:</strong> {record.location}</div>}
+            {record.instructor && <div style={{ fontSize: 12, color: COLORS.textLight }}><strong>Instructor:</strong> {record.instructor}</div>}
             {record.hours && <div style={{ fontSize: 12, color: COLORS.textLight }}><strong>Hours:</strong> {record.hours}</div>}
+            {record.cost && <div style={{ fontSize: 12, color: COLORS.textLight }}><strong>Cost:</strong> ${parseFloat(record.cost).toFixed(2)}</div>}
             {record.score && <div style={{ fontSize: 12, color: COLORS.textLight }}><strong>Score:</strong> {record.score}</div>}
             {record.certification_name && <div style={{ fontSize: 12, color: COLORS.textLight }}><strong>Cert:</strong> {record.certification_name}</div>}
+            {record.certification_hours && <div style={{ fontSize: 12, color: COLORS.textLight }}><strong>Cert Hours:</strong> {record.certification_hours}</div>}
             {record.certification_expiration && <div style={{ fontSize: 12, color: COLORS.textLight }}><strong>Expires:</strong> {new Date(record.certification_expiration + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
-            {record.status && <div style={{ fontSize: 12, color: COLORS.textLight }}><strong>Status:</strong> {record.status}</div>}
           </div>
           {record.remarks && <div style={{ fontSize: 12, color: COLORS.textMid, marginTop: 6, fontStyle: 'italic' }}>{record.remarks}</div>}
         </div>
@@ -94,10 +115,10 @@ function RecordRow({ record, onUpdate, onUpload, onDeleteCert }) {
         </div>
       )}
 
-      <div style={{ padding: '0 20px 12px' }}>
+      <div style={{ padding: '0 20px 16px' }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Upload Certificate</div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <input type="file" multiple onChange={e => setFiles(Array.from(e.target.files))} style={{ fontSize: 12, color: COLORS.textMid, flex: 1 }} />
+          <input type="file" multiple onChange={e => setFiles(Array.from(e.target.files))} style={{ fontSize: 12, color: COLORS.textMid, flex: 1, background: COLORS.white }} />
           {files.length > 0 && (
             <button onClick={handleUpload} disabled={uploading} style={{ padding: '6px 14px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: 'none', background: COLORS.navy, color: COLORS.white, flexShrink: 0 }}>
               {uploading ? 'Uploading...' : 'Upload'}
@@ -109,30 +130,45 @@ function RecordRow({ record, onUpdate, onUpload, onDeleteCert }) {
       {editing && (
         <div style={{ padding: '16px 20px', borderTop: `1px solid ${COLORS.border}`, background: COLORS.bg }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <div>
+            <div style={{ gridColumn: '1 / -1' }}>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Training Title</label>
               <input style={inputStyle} value={form.training_title} onChange={e => set('training_title', e.target.value)} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Training Date</label>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Type</label>
+              <select style={inputStyle} value={form.training_type} onChange={e => set('training_type', e.target.value)}>
+                {TYPE_OPTIONS.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Status</label>
+              <select style={inputStyle} value={form.status} onChange={e => set('status', e.target.value)}>
+                {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Start Date</label>
               <input type="date" style={inputStyle} value={form.training_date} onChange={e => set('training_date', e.target.value)} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Completion Date</label>
-              <input type="date" style={inputStyle} value={form.completion_date} onChange={e => set('completion_date', e.target.value)} />
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>End Date</label>
+              <input type="date" style={inputStyle} value={form.end_date} onChange={e => set('end_date', e.target.value)} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Location</label>
+              <input style={inputStyle} value={form.location} onChange={e => set('location', e.target.value)} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Instructor</label>
+              <input style={inputStyle} value={form.instructor} onChange={e => set('instructor', e.target.value)} />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Hours</label>
               <input type="number" step="0.5" style={inputStyle} value={form.hours} onChange={e => set('hours', e.target.value)} />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Status</label>
-              <select style={inputStyle} value={form.status} onChange={e => set('status', e.target.value)}>
-                <option value="completed">Completed</option>
-                <option value="passed">Passed</option>
-                <option value="failed">Failed</option>
-                <option value="incomplete">Incomplete</option>
-              </select>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Cost ($)</label>
+              <input type="number" step="0.01" style={inputStyle} value={form.cost} onChange={e => set('cost', e.target.value)} />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Score</label>
@@ -143,11 +179,14 @@ function RecordRow({ record, onUpdate, onUpload, onDeleteCert }) {
               <input style={inputStyle} value={form.certification_name} onChange={e => set('certification_name', e.target.value)} />
             </div>
             <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Cert Hours</label>
+              <input type="number" step="0.5" style={inputStyle} value={form.certification_hours} onChange={e => set('certification_hours', e.target.value)} />
+            </div>
+            <div>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Cert Expiration</label>
               <input type="date" style={inputStyle} value={form.certification_expiration} onChange={e => set('certification_expiration', e.target.value)} />
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Certified</label>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: COLORS.textMid, cursor: 'pointer' }}>
                 <input type="checkbox" checked={form.certified} onChange={e => set('certified', e.target.checked)} />
                 This training resulted in a certification
@@ -177,9 +216,11 @@ export default function Transcript() {
   const [officerName, setOfficerName] = useState('')
   const [showAddForm, setShowAddForm] = useState(false)
   const [addForm, setAddForm] = useState({
-    training_title: '', training_date: '', completion_date: '',
-    hours: '', status: 'completed', certified: false,
-    certification_name: '', certification_expiration: '', score: '', remarks: ''
+    training_title: '', training_type: 'internal', training_date: '',
+    end_date: '', completion_date: '', location: '', instructor: '',
+    hours: '', cost: '', status: 'Attended', certified: false,
+    certification_name: '', certification_expiration: '',
+    certification_hours: '', score: '', remarks: ''
   })
   const [toast, setToast] = useState(null)
 
@@ -242,7 +283,13 @@ export default function Transcript() {
       const newRecord = { ...res.data.record, certificates: [] }
       setRecords(prev => [newRecord, ...prev])
       setShowAddForm(false)
-      setAddForm({ training_title: '', training_date: '', completion_date: '', hours: '', status: 'completed', certified: false, certification_name: '', certification_expiration: '', score: '', remarks: '' })
+      setAddForm({
+        training_title: '', training_type: 'internal', training_date: '',
+        end_date: '', completion_date: '', location: '', instructor: '',
+        hours: '', cost: '', status: 'Attended', certified: false,
+        certification_name: '', certification_expiration: '',
+        certification_hours: '', score: '', remarks: ''
+      })
       showToast('Training record added.')
     } catch (err) {
       showToast(err.response?.data?.error || 'Failed to add record', 'error')
@@ -279,21 +326,40 @@ export default function Transcript() {
                 <input required style={inputStyle} value={addForm.training_title} onChange={e => setAddForm(p => ({ ...p, training_title: e.target.value }))} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Training Date</label>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Type</label>
+                <select style={inputStyle} value={addForm.training_type} onChange={e => setAddForm(p => ({ ...p, training_type: e.target.value }))}>
+                  {TYPE_OPTIONS.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Status</label>
+                <select style={inputStyle} value={addForm.status} onChange={e => setAddForm(p => ({ ...p, status: e.target.value }))}>
+                  {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Start Date</label>
                 <input type="date" style={inputStyle} value={addForm.training_date} onChange={e => setAddForm(p => ({ ...p, training_date: e.target.value }))} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>End Date</label>
+                <input type="date" style={inputStyle} value={addForm.end_date} onChange={e => setAddForm(p => ({ ...p, end_date: e.target.value }))} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Location</label>
+                <input style={inputStyle} value={addForm.location} onChange={e => setAddForm(p => ({ ...p, location: e.target.value }))} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Instructor</label>
+                <input style={inputStyle} value={addForm.instructor} onChange={e => setAddForm(p => ({ ...p, instructor: e.target.value }))} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Hours</label>
                 <input type="number" step="0.5" style={inputStyle} value={addForm.hours} onChange={e => setAddForm(p => ({ ...p, hours: e.target.value }))} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Status</label>
-                <select style={inputStyle} value={addForm.status} onChange={e => setAddForm(p => ({ ...p, status: e.target.value }))}>
-                  <option value="completed">Completed</option>
-                  <option value="passed">Passed</option>
-                  <option value="failed">Failed</option>
-                  <option value="incomplete">Incomplete</option>
-                </select>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Cost ($)</label>
+                <input type="number" step="0.01" style={inputStyle} value={addForm.cost} onChange={e => setAddForm(p => ({ ...p, cost: e.target.value }))} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Score</label>
@@ -302,6 +368,10 @@ export default function Transcript() {
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Certification Name</label>
                 <input style={inputStyle} value={addForm.certification_name} onChange={e => setAddForm(p => ({ ...p, certification_name: e.target.value }))} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Cert Hours</label>
+                <input type="number" step="0.5" style={inputStyle} value={addForm.certification_hours} onChange={e => setAddForm(p => ({ ...p, certification_hours: e.target.value }))} />
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Cert Expiration</label>

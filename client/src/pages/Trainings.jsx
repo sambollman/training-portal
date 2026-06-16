@@ -170,18 +170,17 @@ export default function Trainings() {
                   )}
                   {user.role === 'officer' && (
                     <button
-                      onClick={() => !enrollment && !isFull && handleRequest(t)}
-                      disabled={!!enrollment || isFull || isRequesting}
+                      onClick={(e) => { e.stopPropagation(); navigate(`/trainings/${t.id}`) }}
+                      disabled={!!enrollment || isFull}
                       style={{
                         marginTop: 'auto', width: '100%', padding: '9px', borderRadius: 6,
                         fontSize: 13, fontWeight: 700, border: 'none',
                         cursor: enrollment || isFull ? 'default' : 'pointer',
                         background: enrollment?.status === 'approved' ? '#D8F3DC' : enrollment?.status === 'denied' ? '#FDECEA' : enrollment?.status === 'pending' ? '#FFF8E1' : isFull ? COLORS.bg : COLORS.navy,
                         color: enrollment?.status === 'approved' ? '#2D6A4F' : enrollment?.status === 'denied' ? '#9B2335' : enrollment?.status === 'pending' ? '#8A6000' : isFull ? COLORS.textLight : COLORS.white,
-                        
                       }}
                     >
-                      {isRequesting ? 'Submitting...' : enrollment?.status === 'approved' ? '✓ Approved' : enrollment?.status === 'denied' ? '✗ Denied' : enrollment?.status === 'pending' ? '⏳ Pending Approval' : isFull ? 'Session Full' : 'Request to Attend →'}
+                      {enrollment?.status === 'approved' ? '✓ Approved' : enrollment?.status === 'denied' ? '✗ Denied' : enrollment?.status === 'pending' ? '⏳ Pending Approval' : isFull ? 'Session Full' : 'View & Request →'}
                     </button>
                   )}
                 </div>

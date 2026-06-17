@@ -219,10 +219,10 @@ router.post('/:id/files', requireAuth, requireRole('coordinator'), upload.array(
     const inserted = [];
     for (const file of files) {
       const result = await db.query(`
-        INSERT INTO training_files (training_id, filename, original_name, mimetype, size, uploaded_by)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO training_files (training_id, filename, original_name, mimetype, size, uploaded_by, file_type)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
-      `, [req.params.id, file.filename, file.originalname, file.mimetype, file.size, req.user.id]);
+      `, [req.params.id, file.filename, file.originalname, file.mimetype, file.size, req.user.id, req.body.file_type || 'attachment']);
       inserted.push(result.rows[0]);
     }
 

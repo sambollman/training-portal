@@ -117,7 +117,8 @@ CREATE TABLE IF NOT EXISTS training_files (
   mimetype VARCHAR,
   size INTEGER,
   uploaded_by UUID REFERENCES users(id),
-  created_at TIMESTAMPTZ DEFAULT NOW()
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  file_type VARCHAR DEFAULT 'attachment',
 );
 
 -- Training records (transcript)

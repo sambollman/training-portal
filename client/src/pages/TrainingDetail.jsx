@@ -272,8 +272,7 @@ export default function TrainingDetail() {
             </div>
           </div>
         )}
-
-        {(user.role === 'officer' || user.role === 'supervisor') && (
+        {user && (
           <div>
             {myRequest ? (
               <div style={{ padding: '14px 18px', borderRadius: 8, background: myRequest.status === 'approved' ? COLORS.successLight : myRequest.status === 'denied' ? COLORS.dangerLight : '#FFF8E1' }}>

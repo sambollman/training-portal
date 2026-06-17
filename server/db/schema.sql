@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS trainings (
   training_type VARCHAR DEFAULT 'internal',
   is_required BOOLEAN DEFAULT false,
   is_archived BOOLEAN DEFAULT false,
+  is_closed BOOLEAN DEFAULT false,
   created_by UUID REFERENCES users(id),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

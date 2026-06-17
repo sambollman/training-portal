@@ -28,7 +28,7 @@ router.get('/', requireAuth, async (req, res) => {
         to_char(t.end_date, 'YYYY-MM-DD') as end_date,
         t.start_time, t.end_time, t.duration_hours, t.seat_capacity,
         t.no_seat_limit, t.cost, t.training_type, t.is_required,
-        t.is_out_of_state, t.is_archived, t.created_by, t.created_at, t.updated_at,
+        t.is_out_of_state, t.is_archived, t.is_closed, t.created_by, t.created_at, t.updated_at,
         COUNT(er.id) FILTER (WHERE er.status IN ('approved', 'enrolled')) AS enrolled_count
       FROM trainings t
       LEFT JOIN enrollment_requests er ON t.id = er.training_id
@@ -53,7 +53,7 @@ router.get('/:id', requireAuth, async (req, res) => {
         to_char(t.end_date, 'YYYY-MM-DD') as end_date,
         t.start_time, t.end_time, t.duration_hours, t.seat_capacity,
         t.no_seat_limit, t.cost, t.training_type, t.is_required,
-        t.is_out_of_state, t.is_archived, t.created_by, t.created_at, t.updated_at,
+        t.is_out_of_state, t.is_archived, t.is_closed, t.created_by, t.created_at, t.updated_at,
         COUNT(er.id) FILTER (WHERE er.status IN ('approved', 'enrolled')) AS enrolled_count
       FROM trainings t
       LEFT JOIN enrollment_requests er ON t.id = er.training_id
@@ -293,6 +293,22 @@ router.delete('/:id/files/:fileId', requireAuth, requireRole('coordinator'), asy
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to delete file' });
+  }
+});
+
+// PATCH /api/trainings/:id/close - toggle closed status
+router.patch('/:id/close', requireAuth, requireRole('coordinator'), async (req, res) => {
+  const { is_closed } = req.body;
+  try {
+    const result = await db.query(
+      'UPDATE trainings SET is_closed = $1 WHERE id = $2 RETURNING *',
+      [is_closed, req.params.id]
+    );
+    if (!result.rows[0]) return res.status(404).json({ error: 'Training not found' });
+    res.json({ training: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update training' });
   }
 });
 

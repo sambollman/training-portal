@@ -169,7 +169,7 @@ export default function Trainings() {
                   {!t.no_seat_limit && t.seat_capacity && (
                     <SeatBar enrolled={parseInt(t.enrolled_count)} seats={t.seat_capacity} />
                   )}
-                  {(user.role === 'officer' || user.role === 'supervisor') && (
+                  {user && (
                     <button
                       onClick={(e) => { e.stopPropagation(); navigate(`/trainings/${t.id}`) }}
                       disabled={!!enrollment || isFull}

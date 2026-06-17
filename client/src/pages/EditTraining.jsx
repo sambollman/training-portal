@@ -33,6 +33,7 @@ export default function EditTraining() {
   const [error, setError] = useState('')
   const [newFiles, setNewFiles] = useState([])
   const [existingFiles, setExistingFiles] = useState([])
+  const [lessonPlanFiles, setLessonPlanFiles] = useState([])
   const [form, setForm] = useState({
     title: '', category: '', training_type: 'internal',
     session_date: '', end_date: '', start_time: '', end_time: '',
@@ -97,6 +98,16 @@ export default function EditTraining() {
       if (newFiles.length > 0) {
         const formData = new FormData()
         for (const file of newFiles) formData.append('files', file)
+        formData.append('file_type', 'attachment')
+        await axios.post(`/api/trainings/${id}/files`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
+      }
+
+      if (lessonPlanFiles.length > 0) {
+        const formData = new FormData()
+        for (const file of lessonPlanFiles) formData.append('files', file)
+        formData.append('file_type', 'lesson_plan')
         await axios.post(`/api/trainings/${id}/files`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         })
@@ -211,31 +222,48 @@ export default function EditTraining() {
 
         <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 24, marginBottom: 24, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.navy, marginBottom: 16, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>Attachments</div>
-          {existingFiles.length > 0 && (
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Current Files</div>
-              {existingFiles.map(f => (
-                <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: COLORS.bg, borderRadius: 6, marginBottom: 6 }}>
-                  <span style={{ fontSize: 13, color: COLORS.textMid }}>📎 {f.original_name}</span>
-                  <button type="button" onClick={() => handleDeleteFile(f.id)} style={{ fontSize: 11, fontWeight: 700, color: COLORS.danger, background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
-                </div>
-              ))}
-            </div>
-          )}
-          <Field label="Add More Files">
+  
+          <Field label="Flyers / General Attachments">
             <input
               type="file" multiple
               onChange={e => setNewFiles(Array.from(e.target.files))}
               style={{ fontSize: 13, color: COLORS.textMid, display: 'block', width: '100%', padding: '8px', borderRadius: 6, border: `1px solid ${COLORS.border}`, background: COLORS.bg, cursor: 'pointer', boxSizing: 'border-box' }}
             />
             {newFiles.length > 0 && (
-              <div style={{ marginTop: 8 }}>
+                <div style={{ marginTop: 8 }}>
                 {newFiles.map((f, i) => (
-                  <div key={i} style={{ fontSize: 12, color: COLORS.textLight, marginTop: 4 }}>📎 {f.name}</div>
+                    <div key={i} style={{ fontSize: 12, color: COLORS.textLight, marginTop: 4 }}>📎 {f.name}</div>
+                 ))}
+                </div>
+            )}
+          </Field>
+
+          <Field label="Lesson Plan">
+            <input
+              type="file" multiple
+              onChange={e => setLessonPlanFiles(Array.from(e.target.files))}
+              style={{ fontSize: 13, color: COLORS.textMid, display: 'block', width: '100%', padding: '8px', borderRadius: 6, border: `1px solid ${COLORS.border}`, background: COLORS.bg, cursor: 'pointer', boxSizing: 'border-box' }}
+            />
+            {lessonPlanFiles.length > 0 && (
+                <div style={{ marginTop: 8 }}>
+                {lessonPlanFiles.map((f, i) => (
+                  <div key={i} style={{ fontSize: 12, color: COLORS.textLight, marginTop: 4 }}>📋 {f.name}</div>
                 ))}
               </div>
             )}
           </Field>
+
+          {existingFiles.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Current Files</div>
+              {existingFiles.map(f => (
+                <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: COLORS.bg, borderRadius: 6, marginBottom: 6 }}>
+                  <span style={{ fontSize: 13, color: COLORS.textMid }}>{f.file_type === 'lesson_plan' ? '📋' : '📎'} {f.original_name} <span style={{ fontSize: 11, color: COLORS.textLight }}>({f.file_type === 'lesson_plan' ? 'Lesson Plan' : 'Attachment'})</span></span>
+                  <button type="button" onClick={() => handleDeleteFile(f.id)} style={{ fontSize: 11, fontWeight: 700, color: COLORS.danger, background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {error && (

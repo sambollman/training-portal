@@ -282,6 +282,8 @@ export default function TrainingDetail() {
                 </div>
                 {myRequest.denial_note && <div style={{ fontSize: 12, color: COLORS.danger, marginTop: 4 }}>Note: {myRequest.denial_note}</div>}
               </div>
+            ) : training.is_closed ? (
+              <div style={{ padding: '14px 18px', borderRadius: 8, background: COLORS.bg, color: COLORS.textLight, fontWeight: 600, fontSize: 14, textAlign: 'center' }}>This training is closed — no longer accepting requests</div>  
             ) : isFull ? (
               <div style={{ padding: '14px 18px', borderRadius: 8, background: COLORS.bg, color: COLORS.textLight, fontWeight: 600, fontSize: 14, textAlign: 'center' }}>This session is full</div>
             ) : showRequestForm ? (

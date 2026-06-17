@@ -88,6 +88,18 @@ export default function ManageTrainings() {
     }
   }
 
+  const handleToggleClose = async (training) => {
+  const newState = !training.is_closed
+  try {
+    await axios.patch(`/api/trainings/${training.id}/close`, { is_closed: newState })
+    setTrainings(prev => prev.map(t => t.id === training.id ? { ...t, is_closed: newState } : t))
+    setSelected(prev => prev ? { ...prev, is_closed: newState } : prev)
+    showToast(newState ? 'Training closed — no new requests accepted.' : 'Training reopened.')
+  } catch (err) {
+    showToast('Failed to update training', 'error')
+  }
+}
+
   if (loading) return <div style={{ padding: 40, color: COLORS.textLight }}>Loading...</div>
 
   return (
@@ -153,6 +165,10 @@ export default function ManageTrainings() {
                     onClick={() => navigate(`/edit-training/${selected.id}`)}
                     style={{ padding: '8px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1.5px solid ${COLORS.silver}`, background: 'transparent', color: COLORS.silver }}
                   >✏ Edit</button>
+                  <button
+                    onClick={() => handleToggleClose(selected)}
+                    style={{ padding: '8px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1.5px solid ${selected.is_closed ? COLORS.success : COLORS.warning || '#B5621B'}`, background: 'transparent', color: selected.is_closed ? COLORS.success : '#B5621B' }}
+                  >{selected.is_closed ? '🔓 Reopen' : '🔒 Close'}</button>
                   <button
                     onClick={() => handleArchive(selected.id)}
                     style={{ padding: '8px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1.5px solid ${COLORS.danger}`, background: 'transparent', color: COLORS.danger }}

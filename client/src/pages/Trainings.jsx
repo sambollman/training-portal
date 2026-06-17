@@ -142,6 +142,7 @@ export default function Trainings() {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
                       {t.is_required && <Badge color="required">Required</Badge>}
+                      {t.is_closed && <Badge color="full">Closed</Badge>}
                       {isFull && <Badge color="full">Full</Badge>}
                     </div>
                   </div>

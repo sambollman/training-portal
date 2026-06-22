@@ -161,6 +161,36 @@ CREATE TABLE IF NOT EXISTS training_certificates (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Specialized unit trainings (calendar-only, not in request workflow)
+CREATE TABLE IF NOT EXISTS specialized_trainings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  title VARCHAR NOT NULL,
+  unit_type VARCHAR,
+  start_datetime TIMESTAMPTZ,
+  end_datetime TIMESTAMPTZ,
+  description TEXT,
+  location VARCHAR,
+  is_recurring BOOLEAN DEFAULT false,
+  recurrence_pattern VARCHAR,
+  recurrence_end_date DATE,
+  parent_recurring_id UUID REFERENCES specialized_trainings(id),
+  created_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Specialized training file attachments
+CREATE TABLE IF NOT EXISTS specialized_training_files (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  specialized_training_id UUID NOT NULL REFERENCES specialized_trainings(id) ON DELETE CASCADE,
+  filename VARCHAR NOT NULL,
+  original_name VARCHAR NOT NULL,
+  mimetype VARCHAR,
+  size INTEGER,
+  uploaded_by UUID REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Auto-update updated_at on any row change
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$

@@ -59,14 +59,17 @@ export default function Calendar() {
   const getEventsForDay = (day) => {
     if (!day) return []
     const events = []
+    const cellDate = new Date(currentYear, currentMonth, day)
 
     trainings.forEach(t => {
       if (!t.session_date) return
       const start = new Date(t.session_date + 'T12:00:00')
       const end = t.end_date ? new Date(t.end_date + 'T12:00:00') : start
 
-      const cellDate = new Date(currentYear, currentMonth, day)
-      if (cellDate >= start && cellDate <= end) {
+      const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+      const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate())
+
+      if (cellDate >= startDay && cellDate <= endDay) {
         events.push({
           id: t.id,
           title: t.title,
@@ -79,22 +82,18 @@ export default function Calendar() {
     specialized.forEach(s => {
       if (!s.start_datetime) return
       const start = new Date(s.start_datetime)
-      const startLocal = new Date(start.toLocaleString('en-US', { timeZone: 'America/Chicago' }))
-      const end = s.end_datetime ? new Date(new Date(s.end_datetime).toLocaleString('en-US', { timeZone: 'America/Chicago' })) : startLocal
+      const end = s.end_datetime ? new Date(s.end_datetime) : start
 
-      const cellDate = new Date(currentYear, currentMonth, day)
-      const startDay = new Date(startLocal.getFullYear(), startLocal.getMonth(), startLocal.getDate())
+      const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate())
       const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate())
 
       if (cellDate >= startDay && cellDate <= endDay) {
         events.push({
           id: s.id,
-          title: t => t,
+          title: s.title,
           type: 'specialized',
           source: 'specialized',
-          data: s,
         })
-        events[events.length - 1].title = s.title
       }
     })
 

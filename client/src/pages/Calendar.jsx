@@ -75,7 +75,12 @@ export default function Calendar() {
     e.preventDefault()
     setSaving(true)
     try {
-      await axios.post('/api/specialized', form)
+      const payload = {
+        ...form,
+        start_datetime: form.start_datetime ? new Date(form.start_datetime).toISOString() : null,
+        end_datetime: form.end_datetime ? new Date(form.end_datetime).toISOString() : null,
+      }
+      await axios.post('/api/specialized', payload)
       const sr = await axios.get(`/api/specialized?year=${currentYear}&month=${currentMonth + 1}`)
       setSpecialized(sr.data.trainings)
       setShowModal(false)
@@ -335,12 +340,12 @@ export default function Calendar() {
             {selectedSpecialized.location && <div style={{ fontSize: 12, color: COLORS.textLight, marginBottom: 4 }}>Location: {selectedSpecialized.location}</div>}
             {selectedSpecialized.start_datetime && (
               <div style={{ fontSize: 12, color: COLORS.textLight, marginBottom: 4 }}>
-                Start: {new Date(selectedSpecialized.start_datetime).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                Start: {selectedSpecialized.start_datetime_central ? new Date(selectedSpecialized.start_datetime_central + ':00').toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
               </div>
             )}
             {selectedSpecialized.end_datetime && (
               <div style={{ fontSize: 12, color: COLORS.textLight, marginBottom: 4 }}>
-                End: {new Date(selectedSpecialized.end_datetime).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                End: {selectedSpecialized.end_datetime_central ? new Date(selectedSpecialized.end_datetime_central + ':00').toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
               </div>
             )}
             {selectedSpecialized.description && <div style={{ fontSize: 12, color: COLORS.textMid, marginTop: 8, fontStyle: 'italic' }}>{selectedSpecialized.description}</div>}

@@ -10,16 +10,24 @@ router.get('/', requireAuth, async (req, res) => {
     let query, params;
 
     if (year && month) {
-      query = `
-        SELECT * FROM specialized_trainings
-        WHERE EXTRACT(YEAR FROM start_datetime AT TIME ZONE 'America/Chicago') = $1
-        AND EXTRACT(MONTH FROM start_datetime AT TIME ZONE 'America/Chicago') = $2
-        ORDER BY start_datetime ASC
-      `;
-      params = [parseInt(year), parseInt(month)];
-    } else {
-      query = `SELECT * FROM specialized_trainings ORDER BY start_datetime ASC`;
-      params = [];
+        query = `
+            SELECT *,
+            to_char(start_datetime AT TIME ZONE 'America/Chicago', 'YYYY-MM-DD"T"HH24:MI') as start_datetime_central,
+            to_char(end_datetime AT TIME ZONE 'America/Chicago', 'YYYY-MM-DD"T"HH24:MI') as end_datetime_central
+            FROM specialized_trainings
+            WHERE EXTRACT(YEAR FROM start_datetime AT TIME ZONE 'America/Chicago') = $1
+            AND EXTRACT(MONTH FROM start_datetime AT TIME ZONE 'America/Chicago') = $2
+            ORDER BY start_datetime ASC
+        `;
+        params = [parseInt(year), parseInt(month)];
+        } else {
+        query = `
+            SELECT *,
+            to_char(start_datetime AT TIME ZONE 'America/Chicago', 'YYYY-MM-DD"T"HH24:MI') as start_datetime_central,
+            to_char(end_datetime AT TIME ZONE 'America/Chicago', 'YYYY-MM-DD"T"HH24:MI') as end_datetime_central
+            FROM specialized_trainings ORDER BY start_datetime ASC
+        `;
+        params = [];
     }
 
     const result = await db.query(query, params);

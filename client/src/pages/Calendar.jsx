@@ -92,6 +92,18 @@ export default function Calendar() {
     }
   }
 
+  const handleDeleteSpecialized = async (id) => {
+    if (!confirm('Delete this training from the calendar?')) return
+    try {
+      await axios.delete(`/api/specialized/${id}`)
+      setSpecialized(prev => prev.filter(s => s.id !== id))
+      setSelectedSpecialized(null)
+      showToast('Training removed from calendar.')
+    } catch (err) {
+      showToast('Failed to delete', 'error')
+    }
+  }
+
   const prevMonth = () => {
     if (currentMonth === 0) { setCurrentMonth(11); setCurrentYear(y => y - 1) }
     else setCurrentMonth(m => m - 1)
@@ -332,9 +344,15 @@ export default function Calendar() {
               </div>
             )}
             {selectedSpecialized.description && <div style={{ fontSize: 12, color: COLORS.textMid, marginTop: 8, fontStyle: 'italic' }}>{selectedSpecialized.description}</div>}
-          </div>
-        </div>
-      )}
+                        {user?.role === 'coordinator' && (
+                          <button
+                            onClick={() => handleDeleteSpecialized(selectedSpecialized.id)}
+                            style={{ marginTop: 12, width: '100%', padding: '7px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1px solid ${COLORS.danger}`, background: 'transparent', color: COLORS.danger }}
+                          >Delete from Calendar</button>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
       {toast && (
         <div style={{ position: 'fixed', bottom: 28, right: 28, background: toast.type === 'error' ? COLORS.dangerLight : COLORS.navy, color: toast.type === 'error' ? COLORS.danger : COLORS.white, padding: '14px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', maxWidth: 380, zIndex: 200, borderLeft: `4px solid ${toast.type === 'error' ? COLORS.danger : COLORS.gold}` }}>

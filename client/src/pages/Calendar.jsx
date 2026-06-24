@@ -38,6 +38,8 @@ export default function Calendar() {
   const [showModal, setShowModal] = useState(false)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState(null)
+  const [selectedSpecialized, setSelectedSpecialized] = useState(null)
+  const [popoverPos, setPopoverPos] = useState({ x: 0, y: 0 })
   const [form, setForm] = useState({
     title: '',
     unit_type: 'SWAT',
@@ -200,7 +202,14 @@ export default function Calendar() {
                       {events.slice(0, 3).map((event, ei) => {
                         const ec = EVENT_COLORS[event.type]
                         return (
-                          <div key={ei} onClick={() => event.source === 'portal' && navigate(`/trainings/${event.id}`)} style={{
+                          <div key={ei} onClick={(e) => {
+                            if (event.source === 'portal') {
+                              navigate(`/trainings/${event.id}`)
+                            } else if (event.source === 'specialized') {
+                              setPopoverPos({ x: e.clientX, y: e.clientY })
+                              setSelectedSpecialized(event.data || specialized.find(s => s.id === event.id))
+                            }
+                          }} style={{
                             fontSize: 11, fontWeight: 600, padding: '2px 6px', borderRadius: 3,
                             background: ec.bg, color: ec.text, border: `1px solid ${ec.border}44`,
                             cursor: event.source === 'portal' ? 'pointer' : 'default',
@@ -292,6 +301,37 @@ export default function Calendar() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {selectedSpecialized && (
+        <div onClick={() => setSelectedSpecialized(null)} style={{ position: 'fixed', inset: 0, zIndex: 90 }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            position: 'fixed',
+            left: Math.min(popoverPos.x, window.innerWidth - 300),
+            top: Math.min(popoverPos.y + 10, window.innerHeight - 250),
+            background: COLORS.white, border: `1px solid ${COLORS.border}`,
+            borderRadius: 10, padding: 16, width: 280,
+            boxShadow: '0 8px 24px rgba(0,0,0,0.15)', zIndex: 100,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: COLORS.textDark, flex: 1 }}>{selectedSpecialized.title}</div>
+              <button onClick={() => setSelectedSpecialized(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: COLORS.textLight, fontSize: 16, padding: 0, marginLeft: 8 }}>×</button>
+            </div>
+            {selectedSpecialized.unit_type && <div style={{ fontSize: 12, color: COLORS.textLight, marginBottom: 4 }}>Unit: {selectedSpecialized.unit_type}</div>}
+            {selectedSpecialized.location && <div style={{ fontSize: 12, color: COLORS.textLight, marginBottom: 4 }}>Location: {selectedSpecialized.location}</div>}
+            {selectedSpecialized.start_datetime && (
+              <div style={{ fontSize: 12, color: COLORS.textLight, marginBottom: 4 }}>
+                Start: {new Date(selectedSpecialized.start_datetime).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+              </div>
+            )}
+            {selectedSpecialized.end_datetime && (
+              <div style={{ fontSize: 12, color: COLORS.textLight, marginBottom: 4 }}>
+                End: {new Date(selectedSpecialized.end_datetime).toLocaleString('en-US', { timeZone: 'America/Chicago', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+              </div>
+            )}
+            {selectedSpecialized.description && <div style={{ fontSize: 12, color: COLORS.textMid, marginTop: 8, fontStyle: 'italic' }}>{selectedSpecialized.description}</div>}
           </div>
         </div>
       )}

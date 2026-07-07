@@ -3,7 +3,6 @@ const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
 const path = require('path');
 const { pool } = require('./db/connection');
-const approvalRoutes = require('./routes/approvals');
 
 
 const app = express();
@@ -35,6 +34,8 @@ const adminRoutes = require('./routes/admin');
 const externalRoutes = require('./routes/external');
 const transcriptRoutes = require('./routes/transcripts');
 const specializedRoutes = require('./routes/specialized');
+const approvalRoutes = require('./routes/approvals');
+const importRoutes = require('./routes/import');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/trainings', trainingRoutes);
@@ -45,6 +46,7 @@ app.use('/api/approvals', approvalRoutes);
 app.use('/api/external', externalRoutes);
 app.use('/api/transcript', transcriptRoutes);
 app.use('/api/specialized', specializedRoutes);
+app.use('/api/import', importRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });

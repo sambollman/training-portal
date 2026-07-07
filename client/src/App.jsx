@@ -15,6 +15,7 @@ import AdminUsers from './pages/AdminUsers'
 import RequestTraining from './pages/RequestTraining'
 import Transcript from './pages/Transcript'
 import Calendar from './pages/Calendar'
+import ImportTraining from './pages/ImportTraining'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -46,6 +47,7 @@ export default function App() {
     <Route path="/create-training" element={<CreateTraining />} />
     <Route path="/edit-training/:id" element={<EditTraining />} />
     <Route path="/admin/users" element={<AdminUsers />} />
+    <Route path="/import-training" element={<ImportTraining />} />
   </>
 )}
         <Route path="*" element={<Navigate to="/trainings" />} />

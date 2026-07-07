@@ -1,5 +1,3 @@
-mkdir -p ~/webhook
-cat > ~/webhook/server.js << 'EOF'
 const http = require('http');
 const crypto = require('crypto');
 const { exec } = require('child_process');

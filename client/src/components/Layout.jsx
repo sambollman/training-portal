@@ -95,6 +95,7 @@ export default function Layout({ children }) {
             <>
               <NavLink to="/manage-trainings" style={navStyle}>Manage Trainings</NavLink>
               <NavLink to="/admin/users" style={navStyle}>User Management</NavLink>
+              <NavLink to="/import-training" style={navStyle}>Import Records</NavLink>
             </>
           )}
         </div>

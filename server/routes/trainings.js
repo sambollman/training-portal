@@ -68,6 +68,26 @@ router.get('/all', requireAuth, requireRole('coordinator'), async (req, res) => 
   }
 });
 
+// GET /api/trainings/calendar - all trainings for calendar view (any authenticated user)
+router.get('/calendar', requireAuth, async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT 
+        t.id, t.title, t.training_type, t.is_required,
+        to_char(t.session_date, 'YYYY-MM-DD') as session_date,
+        to_char(t.end_date, 'YYYY-MM-DD') as end_date,
+        t.is_archived, t.is_closed
+      FROM trainings t
+      WHERE t.is_archived = false
+      ORDER BY t.session_date ASC
+    `);
+    res.json({ trainings: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch trainings' });
+  }
+});
+
 // GET /api/trainings/:id - single training detail
 router.get('/:id', requireAuth, async (req, res) => {
   try {

@@ -312,5 +312,30 @@ router.patch('/:id/close', requireAuth, requireRole('coordinator'), async (req, 
   }
 });
 
+// GET /api/trainings/all - all trainings including past (coordinator only)
+router.get('/all', requireAuth, requireRole('coordinator'), async (req, res) => {
+  try {
+    const result = await db.query(`
+      SELECT 
+        t.id, t.title, t.category, t.description, t.instructor, t.location,
+        to_char(t.session_date, 'YYYY-MM-DD') as session_date,
+        to_char(t.end_date, 'YYYY-MM-DD') as end_date,
+        t.start_time, t.end_time, t.duration_hours, t.seat_capacity,
+        t.no_seat_limit, t.cost, t.training_type, t.is_required,
+        t.is_out_of_state, t.is_archived, t.is_closed, t.created_by, t.created_at, t.updated_at,
+        COUNT(er.id) FILTER (WHERE er.status IN ('approved', 'enrolled')) AS enrolled_count
+      FROM trainings t
+      LEFT JOIN enrollment_requests er ON t.id = er.training_id
+      WHERE t.is_archived = false
+      GROUP BY t.id
+      ORDER BY t.session_date DESC
+    `);
+    res.json({ trainings: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch trainings' });
+  }
+});
+
 module.exports = router;
 

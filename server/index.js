@@ -36,6 +36,7 @@ const transcriptRoutes = require('./routes/transcripts');
 const specializedRoutes = require('./routes/specialized');
 const approvalRoutes = require('./routes/approvals');
 const importRoutes = require('./routes/import');
+const userimportRoutes = require('./routes/userimport');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/trainings', trainingRoutes);
@@ -47,6 +48,7 @@ app.use('/api/external', externalRoutes);
 app.use('/api/transcript', transcriptRoutes);
 app.use('/api/specialized', specializedRoutes);
 app.use('/api/import', importRoutes);
+app.use('/api/import', userimportRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });

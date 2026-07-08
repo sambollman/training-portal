@@ -97,21 +97,22 @@ router.post('/training-records', requireAuth, requireRole('coordinator'), upload
       // Insert record
       await db.query(`
         INSERT INTO training_records (
-          officer_id, training_title, training_date, end_date,
-          hours, certification_hours, cost,
-          status, source, created_by
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'import',$9)
-      `, [
-        officerId,
-        course,
-        startDate,
-        endDate,
-        courseHours || null,
-        certHours || null,
-        cost || null,
-        status,
-        req.user.id
-      ]);
+        officer_id, training_title, training_date, end_date,
+        hours, certification_hours, cost, remarks,
+        status, source, created_by
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'import',$10)
+    `, [
+      officerId,
+      course,
+      startDate,
+      endDate,
+      courseHours || null,
+      certHours || null,
+      cost || null,
+      extraCosts ? `Extra costs: $${extraCosts}` : null,
+      status,
+      req.user.id
+    ]);
 
       results.imported++;
     }

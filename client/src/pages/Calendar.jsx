@@ -56,7 +56,7 @@ export default function Calendar() {
   useEffect(() => {
     setLoading(true)
     Promise.all([
-      axios.get('/api/trainings'),
+      axios.get('/api/trainings/calendar'),
       axios.get(`/api/specialized?year=${currentYear}&month=${currentMonth + 1}`),
     ]).then(([tr, sr]) => {
       setTrainings(tr.data.trainings)

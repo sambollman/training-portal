@@ -39,7 +39,7 @@ export default function ManageTrainings() {
   const [markingAttendance, setMarkingAttendance] = useState(null)
 
   useEffect(() => {
-    axios.get('/api/trainings')
+    axios.get('/api/trainings/all')
       .then(res => setTrainings(res.data.trainings))
       .finally(() => setLoading(false))
   }, [])

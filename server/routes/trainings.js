@@ -32,7 +32,7 @@ router.get('/', requireAuth, async (req, res) => {
         COUNT(er.id) FILTER (WHERE er.status IN ('approved', 'enrolled')) AS enrolled_count
       FROM trainings t
       LEFT JOIN enrollment_requests er ON t.id = er.training_id
-      WHERE t.is_archived = false
+      WHERE t.is_archived = false AND t.session_date >= CURRENT_DATE
       GROUP BY t.id
       ORDER BY t.session_date ASC
     `);

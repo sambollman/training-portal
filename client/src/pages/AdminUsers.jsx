@@ -47,6 +47,10 @@ export default function AdminUsers() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [toast, setToast] = useState(null)
+  const [showImport, setShowImport] = useState(false)
+  const [importFile, setImportFile] = useState(null)
+  const [importing, setImporting] = useState(false)
+  const [importResults, setImportResults] = useState(null)
 
   useEffect(() => {
     axios.get('/api/admin/users')
@@ -131,9 +135,66 @@ export default function AdminUsers() {
           <h1 style={{ fontSize: 22, fontWeight: 700, color: COLORS.navy, margin: 0 }}>User Management</h1>
           <p style={{ color: COLORS.textLight, fontSize: 13, marginTop: 4 }}>{users.length} members · {users.filter(u => u.is_active).length} active</p>
         </div>
-        <button onClick={openCreate} style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: 'none', background: COLORS.navy, color: COLORS.white }}>+ Add Member</button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => setShowImport(!showImport)} style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: `1px solid ${COLORS.border}`, background: COLORS.white, color: COLORS.textMid }}>⬆ Bulk Import</button>
+          <button onClick={openCreate} style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: 'none', background: COLORS.navy, color: COLORS.white }}>+ Add Member</button>
+        </div>
       </div>
 
+      {showImport && (
+        <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 20, marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.navy, marginBottom: 8 }}>Bulk Import Users</div>
+          <p style={{ fontSize: 12, color: COLORS.textLight, marginBottom: 12 }}>Upload an Excel file with two columns: "Last, First" name and ND.gov username. Existing users will be matched by name or ND.gov username and updated. New users will be created with Officer role.</p>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <input
+              type="file" accept=".xlsx,.xls"
+              onChange={e => setImportFile(e.target.files[0])}
+              style={{ fontSize: 13, color: COLORS.textMid, flex: 1, padding: '8px', borderRadius: 6, border: `1px solid ${COLORS.border}`, background: COLORS.white, cursor: 'pointer' }}
+            />
+            <button
+              onClick={async () => {
+                if (!importFile) return
+                setImporting(true)
+                setImportResults(null)
+                try {
+                  const formData = new FormData()
+                  formData.append('file', importFile)
+                  const res = await axios.post('/api/import/users', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+                  setImportResults(res.data.results)
+                  const ur = await axios.get('/api/admin/users')
+                  setUsers(ur.data.users)
+                } catch (err) {
+                  showToast(err.response?.data?.error || 'Import failed', 'error')
+                } finally {
+                  setImporting(false)
+                }
+              }}
+              disabled={importing || !importFile}
+              style={{ padding: '8px 18px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: importing || !importFile ? 'default' : 'pointer', border: 'none', background: !importFile ? COLORS.border : COLORS.navy, color: !importFile ? COLORS.textLight : COLORS.white, whiteSpace: 'nowrap' }}
+            >{importing ? 'Importing...' : 'Import'}</button>
+          </div>
+          {importResults && (
+            <div style={{ marginTop: 12, display: 'flex', gap: 12 }}>
+              {[
+                { label: 'Added', value: importResults.imported, color: COLORS.success, bg: '#D8F3DC' },
+                { label: 'Updated', value: importResults.updated, color: '#1A5A8A', bg: '#E0ECF8' },
+                { label: 'Invalid Rows', value: importResults.skipped_invalid, color: COLORS.warning, bg: '#FFF0E0' },
+              ].map(({ label, value, color, bg }) => (
+                <div key={label} style={{ background: bg, borderRadius: 8, padding: '10px 16px', textAlign: 'center', flex: 1 }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color }}>{value}</div>
+                  <div style={{ fontSize: 11, color: COLORS.textLight, marginTop: 2 }}>{label}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+<div style={{ marginBottom: 16 }}>
+  <input
+    placeholder="Search by name, username, badge, or unit..."
+      
+      
       <div style={{ marginBottom: 16 }}>
         <input
           placeholder="Search by name, badge, or unit..."

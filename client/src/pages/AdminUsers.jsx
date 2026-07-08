@@ -189,11 +189,6 @@ export default function AdminUsers() {
           )}
         </div>
       )}
-
-<div style={{ marginBottom: 16 }}>
-  <input
-    placeholder="Search by name, username, badge, or unit..."
-      
       
       <div style={{ marginBottom: 16 }}>
         <input

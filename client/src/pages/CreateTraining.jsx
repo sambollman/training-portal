@@ -228,15 +228,7 @@ export default function CreateTraining() {
             )}
         </Field>
 
-          {existingFiles.length > 0 && (
-            <div style={{ marginTop: 16 }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Current Files</div>
-              {existingFiles.map(f => (
-                <div key={f.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: COLORS.bg, borderRadius: 6, marginBottom: 6 }}>
-                  <span style={{ fontSize: 13, color: COLORS.textMid }}>{f.file_type === 'lesson_plan' ? '📋' : '📎'} {f.original_name} <span style={{ fontSize: 11, color: COLORS.textLight }}>({f.file_type === 'lesson_plan' ? 'Lesson Plan' : 'Attachment'})</span></span>
-                  <button type="button" onClick={() => handleDeleteFile(f.id)} style={{ fontSize: 11, fontWeight: 700, color: COLORS.danger, background: 'none', border: 'none', cursor: 'pointer' }}>Remove</button>
-                </div>
-              ))}
+      
             </div>
           )}
         </div>

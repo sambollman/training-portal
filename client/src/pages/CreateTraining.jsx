@@ -230,7 +230,7 @@ export default function CreateTraining() {
 
       
             </div>
-          )}
+        
         </div>
 
         {error && (

@@ -197,7 +197,7 @@ export default function CreateTraining() {
 
         <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 24, marginBottom: 24, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.navy, marginBottom: 16, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>Attachments</div>
-  
+          
           <Field label="Flyers / General Attachments">
             <input
               type="file" multiple
@@ -226,11 +226,7 @@ export default function CreateTraining() {
                 ))}
               </div>
             )}
-        </Field>
-
-      
-            </div>
-        
+          </Field>
         </div>
 
         {error && (

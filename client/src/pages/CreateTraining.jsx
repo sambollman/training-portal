@@ -201,12 +201,12 @@ export default function CreateTraining() {
           <Field label="Flyers / General Attachments">
             <input
               type="file" multiple
-              onChange={e => setNewFiles(Array.from(e.target.files))}
+              onChange={e => setFiles(Array.from(e.target.files))}
               style={{ fontSize: 13, color: COLORS.textMid, display: 'block', width: '100%', padding: '8px', borderRadius: 6, border: `1px solid ${COLORS.border}`, background: COLORS.bg, cursor: 'pointer', boxSizing: 'border-box' }}
             />
-            {newFiles.length > 0 && (
+            {files.length > 0 && (
               <div style={{ marginTop: 8 }}>
-                {newFiles.map((f, i) => (
+                {files.map((f, i) => (
                   <div key={i} style={{ fontSize: 12, color: COLORS.textLight, marginTop: 4 }}>📎 {f.name}</div>
                 ))}
               </div>

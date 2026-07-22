@@ -252,12 +252,14 @@ router.delete('/:id', requireAuth, async (req, res) => {
   try {
     const result = await db.query(`
       DELETE FROM enrollment_requests
-      WHERE id = $1 AND officer_id = $2 AND status IN ('pending', 'approved', 'enrolled')
+      WHERE id = $1 AND officer_id = $2 
+      AND status IN ('pending', 'approved', 'enrolled')
+      AND (attended IS NULL OR attended = false)
       RETURNING *
     `, [req.params.id, req.user.id]);
 
     if (!result.rows[0]) {
-      return res.status(404).json({ error: 'Request not found or cannot be withdrawn' });
+      return res.status(400).json({ error: 'Cannot withdraw — you may have already attended this training or it has already been processed.' });
     }
 
     res.json({ ok: true });

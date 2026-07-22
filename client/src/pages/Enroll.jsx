@@ -98,6 +98,21 @@ export default function Enroll() {
       setEnrolling(null)
     }
   }
+
+  const handleUnenroll = async (requestId) => {
+    if (!confirm('Remove this officer from the training?')) return
+    try {
+      await axios.delete(`/api/requests/${requestId}/unenroll`)
+      setEnrollments(prev => prev.filter(e => e.id !== requestId))
+      const tr = await axios.get('/api/trainings')
+      setTrainings(tr.data.trainings)
+      const updated = tr.data.trainings.find(t => t.id === selectedTraining?.id)
+      if (updated) setSelectedTraining(updated)
+      showToast('Officer unenrolled.')
+    } catch (err) {
+      showToast(err.response?.data?.error || 'Failed to unenroll', 'error')
+    }
+  }
   
   if (loading) return <div style={{ padding: 40, color: COLORS.textLight }}>Loading...</div>
 

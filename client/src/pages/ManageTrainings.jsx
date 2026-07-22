@@ -187,7 +187,7 @@ export default function ManageTrainings() {
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
-                      {['Officer', 'Badge', 'Unit', 'Status', 'Attended'].map(h => (
+                      {['Officer', 'Badge', 'Unit', 'Status', 'Attended', ''].map(h => (
                         <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: COLORS.textLight, letterSpacing: '0.07em', textTransform: 'uppercase' }}>{h}</th>
                       ))}
                     </tr>
@@ -216,6 +216,12 @@ export default function ManageTrainings() {
                           ) : (
                             <span style={{ fontSize: 12, color: COLORS.textLight }}>—</span>
                           )}
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <button
+                            onClick={() => handleUnenroll(e.id)}
+                            style={{ fontSize: 11, fontWeight: 700, color: COLORS.danger, background: 'none', border: 'none', cursor: 'pointer' }}
+                          >Unenroll</button>
                         </td>
                       </tr>
                     ))}

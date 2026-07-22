@@ -98,7 +98,7 @@ export default function Enroll() {
       setEnrolling(null)
     }
   }
-
+  
   if (loading) return <div style={{ padding: 40, color: COLORS.textLight }}>Loading...</div>
 
   return (
@@ -207,6 +207,13 @@ export default function Enroll() {
               <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
                 <div style={{ padding: '14px 20px', borderBottom: `1px solid ${COLORS.border}`, fontSize: 13, fontWeight: 700, color: COLORS.navy }}>Currently Enrolled ({enrollments.length})</div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
+                      {['Officer', 'Badge / Unit', 'Status', ''].map(h => (
+                        <th key={h} style={{ padding: '8px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: COLORS.textLight, letterSpacing: '0.07em', textTransform: 'uppercase' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
                   <tbody>
                     {enrollments.map((e, i) => (
                       <tr key={e.id} style={{ borderBottom: i < enrollments.length - 1 ? `1px solid ${COLORS.border}` : 'none' }}>
@@ -218,6 +225,12 @@ export default function Enroll() {
                             background: e.status === 'approved' ? COLORS.successLight : e.status === 'denied' ? COLORS.dangerLight : '#FFF8E1',
                             color: e.status === 'approved' ? COLORS.success : e.status === 'denied' ? COLORS.danger : '#8A6000',
                           }}>{e.status}</span>
+                        </td>
+                        <td style={{ padding: '10px 16px' }}>
+                          <button
+                            onClick={() => handleUnenroll(e.id)}
+                            style={{ fontSize: 11, fontWeight: 700, color: COLORS.danger, background: 'none', border: 'none', cursor: 'pointer' }}
+                          >Unenroll</button>
                         </td>
                       </tr>
                     ))}

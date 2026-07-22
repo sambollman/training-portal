@@ -252,7 +252,7 @@ router.delete('/:id', requireAuth, async (req, res) => {
   try {
     const result = await db.query(`
       DELETE FROM enrollment_requests
-      WHERE id = $1 AND officer_id = $2 AND status = 'pending'
+      WHERE id = $1 AND officer_id = $2 AND status IN ('pending', 'approved', 'enrolled')
       RETURNING *
     `, [req.params.id, req.user.id]);
 
@@ -264,6 +264,26 @@ router.delete('/:id', requireAuth, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to withdraw request' });
+  }
+});
+
+// DELETE /api/requests/:id/unenroll - supervisor removes an officer from a training
+router.delete('/:id/unenroll', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
+  try {
+    const result = await db.query(`
+      DELETE FROM enrollment_requests
+      WHERE id = $1
+      RETURNING *
+    `, [req.params.id]);
+
+    if (!result.rows[0]) {
+      return res.status(404).json({ error: 'Enrollment not found' });
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to unenroll' });
   }
 });
 

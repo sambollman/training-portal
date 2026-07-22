@@ -175,8 +175,8 @@ export default function MySchedule() {
                       {expanded === r.id ? 'Hide Chain' : 'View Chain'}
                     </button>
                   )}
-                  {r.status === 'pending' && r.chain_status !== 'in_progress' && (
-                    <button onClick={() => handleWithdraw(r.id)} style={{ padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${COLORS.border}`, background: COLORS.white, color: COLORS.textLight }}>Withdraw</button>
+                  {(r.status === 'pending' || r.status === 'approved' || r.status === 'enrolled') && r.request_type === 'self_requested' && (
+                    <button onClick={() => handleWithdraw(r.id)} ...>Withdraw</button>
                   )}
                 </div>
               </div>

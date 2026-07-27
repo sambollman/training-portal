@@ -191,7 +191,7 @@ router.patch('/:id/deny', requireAuth, requireRole('supervisor', 'coordinator'),
 });
 
 // PATCH /api/requests/:id/attendance
-router.patch('/:id/attendance', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
+router.patch('/:id/attendance', requireAuth, requireRole('supervisor', 'coordinator', 'instructor'), async (req, res) => {
   const { attended } = req.body;
 
   if (typeof attended !== 'boolean') {

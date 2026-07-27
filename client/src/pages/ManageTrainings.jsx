@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import { useAuth } from '../context/AuthContext'
 
 const COLORS = {
   navy: '#0D1B2A', navyMid: '#1B2E45', gold: '#C9A84C', bg: '#F0F3F7', white: '#FFFFFF',
@@ -30,6 +31,7 @@ function StatusBadge({ status }) {
 
 export default function ManageTrainings() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [trainings, setTrainings] = useState([])
   const [selected, setSelected] = useState(null)
   const [enrollments, setEnrollments] = useState([])
@@ -161,18 +163,22 @@ export default function ManageTrainings() {
                     onClick={() => window.open(`/api/trainings/${selected.id}/roster`)}
                     style={{ padding: '8px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1.5px solid ${COLORS.gold}`, background: 'transparent', color: COLORS.gold }}
                   >⬇ Export Roster</button>
-                  <button
-                    onClick={() => navigate(`/edit-training/${selected.id}`)}
-                    style={{ padding: '8px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1.5px solid ${COLORS.silver}`, background: 'transparent', color: COLORS.silver }}
-                  >✏ Edit</button>
-                  <button
-                    onClick={() => handleToggleClose(selected)}
-                    style={{ padding: '8px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1.5px solid ${selected.is_closed ? COLORS.success : COLORS.warning || '#B5621B'}`, background: 'transparent', color: selected.is_closed ? COLORS.success : '#B5621B' }}
-                  >{selected.is_closed ? '🔓 Reopen' : '🔒 Close'}</button>
-                  <button
-                    onClick={() => handleArchive(selected.id)}
-                    style={{ padding: '8px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1.5px solid ${COLORS.danger}`, background: 'transparent', color: COLORS.danger }}
-                  >Archive</button>
+                  {user?.role === 'coordinator' && (
+                    <>
+                      <button
+                        onClick={() => navigate(`/edit-training/${selected.id}`)}
+                        style={{ padding: '8px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1.5px solid ${COLORS.silver}`, background: 'transparent', color: COLORS.silver }}
+                      >✏ Edit</button>
+                      <button
+                        onClick={() => handleToggleClose(selected)}
+                        style={{ padding: '8px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1.5px solid ${selected.is_closed ? COLORS.success : COLORS.warning || '#B5621B'}`, background: 'transparent', color: selected.is_closed ? COLORS.success : '#B5621B' }}
+                      >{selected.is_closed ? '🔓 Reopen' : '🔒 Close'}</button>
+                      <button
+                        onClick={() => handleArchive(selected.id)}
+                        style={{ padding: '8px 16px', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', border: `1.5px solid ${COLORS.danger}`, background: 'transparent', color: COLORS.danger }}
+                      >Archive</button>
+                    </>
+                  )}
                 </div>
               </div>
 

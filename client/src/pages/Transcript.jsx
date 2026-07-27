@@ -19,7 +19,7 @@ const inputStyle = {
 const STATUS_OPTIONS = ['Attended', 'Partial Attendance', 'Did Not Attend']
 const TYPE_OPTIONS = ['internal', 'external']
 
-function RecordRow({ record, onUpdate, onUpload, onDeleteCert }) {
+function RecordRow({ record, onUpdate, onUpload, onDeleteCert, canEdit }) {
   const [editing, setEditing] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [form, setForm] = useState({
@@ -94,10 +94,12 @@ function RecordRow({ record, onUpdate, onUpload, onDeleteCert }) {
           </div>
           {record.remarks && <div style={{ fontSize: 12, color: COLORS.textMid, marginTop: 6, fontStyle: 'italic' }}>{record.remarks}</div>}
         </div>
-        <button onClick={() => setEditing(!editing)} style={{ fontSize: 12, fontWeight: 600, color: COLORS.navy, background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '5px 12px', cursor: 'pointer', marginLeft: 12, flexShrink: 0 }}>
-          {editing ? 'Cancel' : 'Edit'}
-        </button>
-      </div>
+        {canEdit && (
+          <button onClick={() => setEditing(!editing)} style={{ fontSize: 12, fontWeight: 600, color: COLORS.navy, background: 'none', border: `1px solid ${COLORS.border}`, borderRadius: 6, padding: '5px 12px', cursor: 'pointer', marginLeft: 12, flexShrink: 0 }}>
+            {editing ? 'Cancel' : 'Edit'}
+          </button>
+        )}
+              </div>
 
       {record.certificates && record.certificates.length > 0 && (
         <div style={{ padding: '0 20px 12px' }}>
@@ -311,10 +313,12 @@ export default function Transcript() {
             {records.length} training{records.length !== 1 ? 's' : ''} · {totalHours.toFixed(1)} total hours
           </p>
         </div>
-        <button onClick={() => setShowAddForm(!showAddForm)} style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: 'none', background: COLORS.navy, color: COLORS.white }}>
-          + Add Record
-        </button>
-      </div>
+        {(user.role === 'supervisor' || user.role === 'coordinator') && (
+          <button onClick={() => setShowAddForm(!showAddForm)} style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: 'none', background: COLORS.navy, color: COLORS.white }}>
+            + Add Record
+          </button>
+        )}
+              </div>
 
       {showAddForm && (
         <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
@@ -410,6 +414,7 @@ export default function Transcript() {
             onUpdate={handleUpdate}
             onUpload={handleUpload}
             onDeleteCert={handleDeleteCert}
+            canEdit={user.role === 'supervisor' || user.role === 'coordinator'}
           />
         ))
       )}

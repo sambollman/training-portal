@@ -91,9 +91,11 @@ export default function Layout({ children }) {
               <NavLink to="/all-requests" style={navStyle}>All Requests</NavLink>
            </>
          )}
+          {(user?.role === 'coordinator' || user?.role === 'instructor') && (
+            <NavLink to="/manage-trainings" style={navStyle}>Manage Trainings</NavLink>
+         )}
          {user?.role === 'coordinator' && (
             <>
-              <NavLink to="/manage-trainings" style={navStyle}>Manage Trainings</NavLink>
               <NavLink to="/admin/users" style={navStyle}>User Management</NavLink>
               <NavLink to="/import-training" style={navStyle}>Import Records</NavLink>
             </>

@@ -40,6 +40,7 @@ export default function Calendar() {
   const [toast, setToast] = useState(null)
   const [selectedSpecialized, setSelectedSpecialized] = useState(null)
   const [popoverPos, setPopoverPos] = useState({ x: 0, y: 0 })
+  const [myRequests, setMyRequests] = useState([])
   const [form, setForm] = useState({
     title: '',
     unit_type: 'SWAT',
@@ -58,9 +59,11 @@ export default function Calendar() {
     Promise.all([
       axios.get('/api/trainings/calendar'),
       axios.get(`/api/specialized?year=${currentYear}&month=${currentMonth + 1}`),
-    ]).then(([tr, sr]) => {
+      axios.get('/api/requests'),
+    ]).then(([tr, sr, rr]) => {
       setTrainings(tr.data.trainings)
       setSpecialized(sr.data.trainings)
+      setMyRequests(rr.data.requests)
     }).finally(() => setLoading(false))
   }, [currentYear, currentMonth])
 
@@ -138,10 +141,13 @@ export default function Calendar() {
       const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate())
       const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate())
       if (cellDate >= startDay && cellDate <= endDay) {
+        const enrolled = myRequests.find(r => r.training_id === t.id)
         events.push({
           id: t.id, title: t.title,
           type: t.training_type === 'external' ? 'external' : t.training_type === 'civilian' ? 'civilian' : 'internal',
           source: 'portal',
+          enrolled: !!enrolled,
+          enrolledStatus: enrolled?.status,
         })
       }
     })
@@ -228,10 +234,12 @@ export default function Calendar() {
                             }
                           }} style={{
                             fontSize: 11, fontWeight: 600, padding: '2px 6px', borderRadius: 3,
-                            background: ec.bg, color: ec.text, border: `1px solid ${ec.border}44`,
+                            background: ec.bg, color: ec.text,
+                            border: event.enrolled ? `2px solid ${ec.border}` : `1px solid ${ec.border}44`,
+                            boxShadow: event.enrolled ? `0 0 0 1px ${ec.border}` : 'none',
                             cursor: event.source === 'portal' ? 'pointer' : 'default',
                             overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis',
-                          }}>{event.title}</div>
+                          }}>{event.enrolled ? '✓ ' : ''}{event.title}</div>
                         )
                       })}
                       {events.length > 3 && (

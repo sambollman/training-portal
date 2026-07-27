@@ -44,7 +44,7 @@ router.get('/', requireAuth, async (req, res) => {
 });
 
 // GET /api/trainings/all - all trainings including past (coordinator only)
-router.get('/all', requireAuth, requireRole('coordinator'), async (req, res) => {
+router.get('/all', requireAuth, requireRole('coordinator', 'instructor'), async (req, res) => {
   try {
     const result = await db.query(`
       SELECT 

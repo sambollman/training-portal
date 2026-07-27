@@ -112,7 +112,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 
     // Supervisors and coordinators can see who is enrolled
     let enrollments = [];
-    if (req.user.role === 'supervisor' || req.user.role === 'coordinator') {
+    if (req.user.role === 'supervisor' || req.user.role === 'coordinator' || req.user.role === 'instructor') {
       const result = await db.query(`
         SELECT er.*, u.full_name, u.badge_number, u.unit
         FROM enrollment_requests er

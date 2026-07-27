@@ -241,7 +241,7 @@ router.get('/:id/roster', requireAuth, requireRole('supervisor', 'coordinator'),
     lines.push('Username,Section,Status,StartDate,EndDate,ExitDate,Grade,Assignments,AssignmentsCompleted,cf_GunQual');
 
     for (const row of enrollments.rows) {
-      lines.push(`"${row.post_license_number || ''}","${t.title}","COMPLETED","${startDate}","${endDate}","${endDate}","100","","",""`);
+      lines.push(`"${row.post_license_number || ''}","${t.section_number || t.title}","COMPLETED","${startDate}","${endDate}","${endDate}","100","","",""`);
     }
 
     const filename = `${t.title.replace(/[^a-z0-9]/gi, '_')}_roster.csv`;

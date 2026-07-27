@@ -33,6 +33,7 @@ export default function CreateTraining() {
   const [lessonPlanFiles, setLessonPlanFiles] = useState([])
   const [form, setForm] = useState({
     title: '',
+    section_number: '',
     category: '',
     training_type: 'internal',
     session_date: '',
@@ -98,6 +99,9 @@ export default function CreateTraining() {
 
           <Field label="Training Name" required>
             <input style={inputStyle} value={form.title} onChange={e => set('title', e.target.value)} required />
+          </Field>
+          <Field label="Section Number">
+            <input style={inputStyle} value={form.section_number} onChange={e => set('section_number', e.target.value)} placeholder="From POST board" />
           </Field>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>

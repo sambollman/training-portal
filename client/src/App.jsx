@@ -41,9 +41,11 @@ export default function App() {
     <Route path="/all-requests" element={<AllRequests />} />
   </>
 )}
+{(user.role === 'coordinator' || user.role === 'instructor') && (
+  <Route path="/manage-trainings" element={<ManageTrainings />} />
+)}
 {user.role === 'coordinator' && (
   <>
-    <Route path="/manage-trainings" element={<ManageTrainings />} />
     <Route path="/create-training" element={<CreateTraining />} />
     <Route path="/edit-training/:id" element={<EditTraining />} />
     <Route path="/admin/users" element={<AdminUsers />} />

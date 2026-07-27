@@ -66,7 +66,7 @@ router.get('/:officerId', requireAuth, async (req, res) => {
 });
 
 // PUT /api/transcript/record/:recordId - update a training record
-router.put('/record/:recordId', requireAuth, async (req, res) => {
+router.put('/record/:recordId', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
   const {
     training_title, training_type, training_date, end_date, completion_date,
     location, instructor, hours, cost,
@@ -106,7 +106,7 @@ router.put('/record/:recordId', requireAuth, async (req, res) => {
 });
 
 // POST /api/transcript/:officerId/record - manually add a training record
-router.post('/:officerId/record', requireAuth, async (req, res) => {
+router.post('/:officerId/record', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
   const {
     training_title, training_type, training_date, end_date, completion_date,
     location, instructor, hours, cost,

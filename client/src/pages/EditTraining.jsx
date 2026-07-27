@@ -63,6 +63,7 @@ export default function EditTraining() {
         no_seat_limit: t.no_seat_limit || false,
         cost: t.cost || '',
         is_required: t.is_required || false,
+        section_number: t.section_number || '',
         is_out_of_state: t.is_out_of_state || false,
         description: t.description || '',
       })
@@ -135,6 +136,9 @@ export default function EditTraining() {
           <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.navy, marginBottom: 16, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>Basic Information</div>
           <Field label="Training Name" required>
             <input style={inputStyle} value={form.title} onChange={e => set('title', e.target.value)} required />
+          </Field>
+          <Field label="Section Number">
+            <input style={inputStyle} value={form.section_number} onChange={e => set('section_number', e.target.value)} placeholder="From POST board" />
           </Field>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Field label="Category">

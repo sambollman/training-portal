@@ -98,7 +98,15 @@ router.put('/record/:recordId', requireAuth, requireRole('supervisor', 'coordina
       return res.status(404).json({ error: 'Record not found' });
     }
 
-    res.json({ record: result.rows[0] });
+    const formatted = await db.query(`
+      SELECT tr.*,
+        to_char(tr.training_date, 'YYYY-MM-DD') as training_date,
+        to_char(tr.end_date, 'YYYY-MM-DD') as end_date,
+        to_char(tr.completion_date, 'YYYY-MM-DD') as completion_date,
+        to_char(tr.certification_expiration, 'YYYY-MM-DD') as certification_expiration
+      FROM training_records tr WHERE tr.id = $1
+    `, [req.params.recordId]);
+    res.json({ record: formatted.rows[0] });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to update record' });

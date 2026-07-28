@@ -236,7 +236,7 @@ export default function TrainingDetail() {
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>
           <InfoBlock label="Location" value={training.location} />
-          <InfoBlock label="Instructor" value={training.instructor} />
+          <InfoBlock label="Instructor" value={training.instructors && training.instructors.length > 0 ? training.instructors.map(i => `${i.first_name} ${i.last_name}`).join(', ') : training.instructor || '—'} />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>

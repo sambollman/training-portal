@@ -81,7 +81,7 @@ function RecordRow({ record, onUpdate, onUpload, onDeleteCert, canEdit }) {
             {record.certified && <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase', background: COLORS.successLight, color: COLORS.success }}>Certified</span>}
           </div>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            {record.training_date && <div style={{ fontSize: 12, color: COLORS.textLight }}><strong>Date:</strong> {new Date(record.training_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
+            {record.training_date && <div style={{ fontSize: 12, color: COLORS.textLight }}><strong>Date:</strong> {new Date(record.training_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}{record.end_date ? ` – ${new Date(record.end_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}</div>}
             {record.end_date && <div style={{ fontSize: 12, color: COLORS.textLight }}><strong>End:</strong> {new Date(record.end_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>}
             {record.location && <div style={{ fontSize: 12, color: COLORS.textLight }}><strong>Location:</strong> {record.location}</div>}
             {record.instructor && <div style={{ fontSize: 12, color: COLORS.textLight }}><strong>Instructor:</strong> {record.instructor}</div>}

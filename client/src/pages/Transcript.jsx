@@ -321,7 +321,8 @@ export default function Transcript() {
   if (loading) return <div style={{ padding: 40, color: COLORS.textLight }}>Loading...</div>
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
       <div>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: COLORS.navy, margin: 0 }}>
           {officerName ? `${officerName} — Training Transcript` : 'My Training Transcript'}
@@ -365,7 +366,7 @@ export default function Transcript() {
       </div>
     </div>
 
-      {showAddForm && (
+    {showAddForm && (
         <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.navy, marginBottom: 16 }}>Add Training Record</div>
           <form onSubmit={handleAddRecord}>

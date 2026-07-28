@@ -73,35 +73,35 @@ export default function Layout({ children }) {
       </header>
 
       <nav style={{ background: COLORS.white, borderBottom: `1px solid ${COLORS.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', display: 'flex' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', display: 'flex', borderBottom: isSupervisor ? `1px solid ${COLORS.border}` : 'none' }}>
           <NavLink to="/trainings" style={navStyle}>Available Trainings</NavLink>
-          <NavLink to="/my-schedule" style={navStyle}>My Schedule</NavLink>
           <NavLink to="/calendar" style={navStyle}>Calendar</NavLink>
-          <NavLink to="/request-training" style={navStyle}>Request a Training</NavLink>
+          <NavLink to="/my-schedule" style={navStyle}>My Schedule</NavLink>
           <NavLink to="/transcript" style={navStyle}>My Transcript</NavLink>
-          {isSupervisor && (
-            <>
-              <NavLink to="/pending" style={navStyle}>
-                Pending Approvals
-                {pendingCount > 0 && (
-                  <span style={{ marginLeft: 6, background: '#9B2335', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 10 }}>{pendingCount}</span>
-                )}
-              </NavLink>
-              <NavLink to="/enroll" style={navStyle}>Enroll Officers</NavLink>
-              <NavLink to="/all-requests" style={navStyle}>All Requests</NavLink>
-              <NavLink to="/compliance" style={navStyle}>Compliance</NavLink>
-           </>
-         )}
-          {(user?.role === 'coordinator' || user?.role === 'instructor') && (
-            <NavLink to="/manage-trainings" style={navStyle}>Manage Trainings</NavLink>
-         )}
-         {user?.role === 'coordinator' && (
-            <>
-              <NavLink to="/admin/users" style={navStyle}>User Management</NavLink>
-              <NavLink to="/import-training" style={navStyle}>Import Records</NavLink>
-            </>
-          )}
+          <NavLink to="/request-training" style={navStyle}>Request a Training</NavLink>
         </div>
+        {isSupervisor && (
+          <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', display: 'flex' }}>
+            <NavLink to="/pending" style={navStyle}>
+              Pending Approvals
+              {pendingCount > 0 && (
+                <span style={{ marginLeft: 6, background: '#9B2335', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 10 }}>{pendingCount}</span>
+              )}
+            </NavLink>
+            <NavLink to="/enroll" style={navStyle}>Enroll Officers</NavLink>
+            <NavLink to="/all-requests" style={navStyle}>All Requests</NavLink>
+            <NavLink to="/compliance" style={navStyle}>Compliance</NavLink>
+            {(user?.role === 'coordinator' || user?.role === 'instructor') && (
+              <NavLink to="/manage-trainings" style={navStyle}>Manage Trainings</NavLink>
+            )}
+            {user?.role === 'coordinator' && (
+              <>
+                <NavLink to="/admin/users" style={navStyle}>User Management</NavLink>
+                <NavLink to="/import-training" style={navStyle}>Import Records</NavLink>
+              </>
+            )}
+          </div>
+        )}
       </nav>
 
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 24px' }}>

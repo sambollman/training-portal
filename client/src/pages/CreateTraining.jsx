@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import { useState, useEffect } from 'react'
 
 const COLORS = {
   navy: '#0D1B2A', gold: '#C9A84C', bg: '#F0F3F7', white: '#FFFFFF',
@@ -31,6 +32,7 @@ export default function CreateTraining() {
   const [error, setError] = useState('')
   const [files, setFiles] = useState([])
   const [lessonPlanFiles, setLessonPlanFiles] = useState([])
+  const [instructors, setInstructors] = useState([])
   const [form, setForm] = useState({
     title: '',
     section_number: '',
@@ -43,6 +45,7 @@ export default function CreateTraining() {
     duration_hours: '',
     location: '',
     instructor: '',
+    instructor_id: '',
     seat_capacity: '',
     no_seat_limit: false,
     cost: '',
@@ -85,6 +88,10 @@ export default function CreateTraining() {
       setSaving(false)
     }
   }
+  useEffect(() => {
+    axios.get('/api/admin/users')
+      .then(res => setInstructors(res.data.users.filter(u => u.is_active)))
+  }, [])
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto' }}>
@@ -156,7 +163,16 @@ export default function CreateTraining() {
               <input style={inputStyle} value={form.location} onChange={e => set('location', e.target.value)} />
             </Field>
             <Field label="Instructor">
-              <input style={inputStyle} value={form.instructor} onChange={e => set('instructor', e.target.value)} />
+              <select style={inputStyle} value={form.instructor_id} onChange={e => {
+                const selected = instructors.find(u => u.id === e.target.value)
+                set('instructor_id', e.target.value)
+                set('instructor', selected ? `${selected.first_name} ${selected.last_name}` : '')
+              }}>
+                <option value="">Select an instructor...</option>
+                {instructors.map(u => (
+                  <option key={u.id} value={u.id}>{u.last_name}, {u.first_name} — {u.rank}</option>
+                ))}
+              </select>
             </Field>
           </div>
         </div>

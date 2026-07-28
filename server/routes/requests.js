@@ -221,13 +221,16 @@ router.patch('/:id/attendance', requireAuth, requireRole('supervisor', 'coordina
       if (existing.rows.length === 0 && t) {
         await db.query(`
           INSERT INTO training_records (
-            officer_id, training_title, training_date, hours,
-            source, enrollment_request_id, created_by
-          ) VALUES ($1, $2, $3, $4, 'portal', $5, $6)
+            officer_id, training_title, training_date, end_date, location,
+            instructor, hours, source, enrollment_request_id, created_by
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'portal', $8, $9)
         `, [
           request.officer_id,
           t.title,
           t.session_date,
+          t.end_date || null,
+          t.location || null,
+          t.instructor || null,
           t.duration_hours,
           request.id,
           req.user.id

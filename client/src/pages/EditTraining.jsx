@@ -69,6 +69,7 @@ export default function EditTraining() {
         section_number: t.section_number || '',
         is_out_of_state: t.is_out_of_state || false,
         description: t.description || '',
+        compliance_tag: t.compliance_tag || '',
         instructor_ids: tr.data.training.instructors ? tr.data.training.instructors.map(i => i.id) : [],
       })
       setExistingFiles(fr.data.files)
@@ -143,6 +144,9 @@ export default function EditTraining() {
           </Field>
           <Field label="Section Number">
             <input style={inputStyle} value={form.section_number} onChange={e => set('section_number', e.target.value)} placeholder="From POST board" />
+          </Field>
+          <Field label="Compliance Tag">
+            <input style={inputStyle} value={form.compliance_tag} onChange={e => set('compliance_tag', e.target.value)} placeholder="e.g. Annual Firearms Qual 2026" />
           </Field>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Field label="Category">

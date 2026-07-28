@@ -98,7 +98,7 @@ router.get('/:id', requireAuth, async (req, res) => {
         to_char(t.end_date, 'YYYY-MM-DD') as end_date,
         t.start_time, t.end_time, t.duration_hours, t.seat_capacity,
         t.no_seat_limit, t.cost, t.training_type, t.is_required,
-        t.is_out_of_state, t.is_archived, t.is_closed, t.section_number, t.created_by, t.created_at, t.updated_at,
+        t.is_out_of_state, t.is_archived, t.is_closed, t.section_number, t.instructor_id, t.created_by, t.created_at, t.updated_at,
         COUNT(er.id) FILTER (WHERE er.status IN ('approved', 'enrolled')) AS enrolled_count
       FROM trainings t
       LEFT JOIN enrollment_requests er ON t.id = er.training_id

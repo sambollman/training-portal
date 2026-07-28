@@ -195,16 +195,17 @@ router.put('/:id', requireAuth, requireRole('coordinator'), async (req, res) => 
     if (!result.rows[0]) {
       return res.status(404).json({ error: 'Training not found' });
     }
-  // Update instructors
-  await db.query('DELETE FROM training_instructors WHERE training_id = $1', [req.params.id]);
-  if (instructor_ids && instructor_ids.length > 0) {
-    for (const userId of instructor_ids) {
-      await db.query(
-        'INSERT INTO training_instructors (training_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-        [req.params.id, userId]
-      );
+
+    // Update instructors
+    await db.query('DELETE FROM training_instructors WHERE training_id = $1', [req.params.id]);
+    if (instructor_ids && instructor_ids.length > 0) {
+      for (const userId of instructor_ids) {
+        await db.query(
+          'INSERT INTO training_instructors (training_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [req.params.id, userId]
+        );
+      }
     }
-  }
 
     res.json({ training: result.rows[0] });
   } catch (err) {
@@ -212,7 +213,6 @@ router.put('/:id', requireAuth, requireRole('coordinator'), async (req, res) => 
     res.status(500).json({ error: 'Failed to update training' });
   }
 });
-
 // DELETE /api/trainings/:id - archive a training (coordinator only)
 router.delete('/:id', requireAuth, requireRole('coordinator'), async (req, res) => {
   try {

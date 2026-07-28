@@ -45,7 +45,7 @@ export default function CreateTraining() {
     duration_hours: '',
     location: '',
     instructor: '',
-    instructor_id: '',
+    instructor_ids: [],
     seat_capacity: '',
     no_seat_limit: false,
     cost: '',
@@ -162,17 +162,18 @@ export default function CreateTraining() {
             <Field label="Location">
               <input style={inputStyle} value={form.location} onChange={e => set('location', e.target.value)} />
             </Field>
-            <Field label="Instructor">
-              <select style={inputStyle} value={form.instructor_id} onChange={e => {
-                const selected = instructors.find(u => u.id === e.target.value)
-                set('instructor_id', e.target.value)
-                set('instructor', selected ? `${selected.first_name} ${selected.last_name}` : '')
-              }}>
-                <option value="">Select an instructor...</option>
+            <Field label="Instructor(s)">
+              <select
+                multiple
+                style={{ ...inputStyle, height: 120 }}
+                value={form.instructor_ids || []}
+                onChange={e => set('instructor_ids', Array.from(e.target.selectedOptions, o => o.value))}
+              >
                 {instructors.map(u => (
                   <option key={u.id} value={u.id}>{u.last_name}, {u.first_name} — {u.rank}</option>
                 ))}
               </select>
+              <div style={{ fontSize: 11, color: COLORS.textLight, marginTop: 4 }}>Hold Ctrl/Cmd to select multiple</div>
             </Field>
           </div>
         </div>

@@ -34,6 +34,7 @@ export default function EditTraining() {
   const [newFiles, setNewFiles] = useState([])
   const [existingFiles, setExistingFiles] = useState([])
   const [lessonPlanFiles, setLessonPlanFiles] = useState([])
+  const [instructors, setInstructors] = useState([])
   const [form, setForm] = useState({
     title: '', category: '', training_type: 'internal',
     session_date: '', end_date: '', start_time: '', end_time: '',
@@ -46,8 +47,10 @@ export default function EditTraining() {
     Promise.all([
       axios.get(`/api/trainings/${id}`),
       axios.get(`/api/trainings/${id}/files`),
-    ]).then(([tr, fr]) => {
+      axios.get('/api/admin/users'),
+    ]).then(([tr, fr, ur]) => {
       const t = tr.data.training
+      setInstructors(ur.data.users.filter(u => u.is_active))
       setForm({
         title: t.title || '',
         category: t.category || '',
@@ -65,6 +68,7 @@ export default function EditTraining() {
         is_required: t.is_required || false,
         section_number: t.section_number || '',
         is_out_of_state: t.is_out_of_state || false,
+        instructor_id: t.instructor_id || '',
         description: t.description || '',
       })
       setExistingFiles(fr.data.files)
@@ -184,7 +188,16 @@ export default function EditTraining() {
               <input style={inputStyle} value={form.location} onChange={e => set('location', e.target.value)} />
             </Field>
             <Field label="Instructor">
-              <input style={inputStyle} value={form.instructor} onChange={e => set('instructor', e.target.value)} />
+              <select style={inputStyle} value={form.instructor_id} onChange={e => {
+                const selected = instructors.find(u => u.id === e.target.value)
+                set('instructor_id', e.target.value)
+                set('instructor', selected ? `${selected.first_name} ${selected.last_name}` : '')
+              }}>
+                <option value="">Select an instructor...</option>
+                {instructors.map(u => (
+                  <option key={u.id} value={u.id}>{u.last_name}, {u.first_name} — {u.rank}</option>
+                ))}
+              </select>
             </Field>
           </div>
         </div>

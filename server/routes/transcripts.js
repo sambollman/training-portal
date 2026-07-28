@@ -25,8 +25,8 @@ router.get('/:officerId', requireAuth, async (req, res) => {
 
   // Officers can only see their own transcript
   if (req.user.role === 'officer' && req.user.id !== officerId) {
-    return res.status(403).json({ error: 'Forbidden' });
-  }
+  return res.status(403).json({ error: 'Forbidden' });
+}
 
   try {
     const records = await db.query(`

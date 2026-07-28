@@ -206,8 +206,6 @@ router.put('/:id', requireAuth, requireRole('coordinator'), async (req, res) => 
     }
   }
 
-res.json({ training: result.rows[0] });
-
     res.json({ training: result.rows[0] });
   } catch (err) {
     console.error(err);

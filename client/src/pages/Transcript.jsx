@@ -216,6 +216,9 @@ export default function Transcript() {
   const [loading, setLoading] = useState(true)
   const [officerName, setOfficerName] = useState('')
   const [showAddForm, setShowAddForm] = useState(false)
+  const [search, setSearch] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searching, setSearching] = useState(false)
   const [addForm, setAddForm] = useState({
     training_title: '', training_type: 'internal', training_date: '',
     end_date: '', completion_date: '', location: '', instructor: '',
@@ -238,6 +241,22 @@ export default function Transcript() {
         .catch(() => {})
     }
   }, [targetId])
+
+  useEffect(() => {
+    if (!search || search.length < 2 || user.role === 'officer') return
+    const timeout = setTimeout(async () => {
+      setSearching(true)
+      try {
+        const res = await axios.get(`/api/admin/users?search=${encodeURIComponent(search)}`)
+        setSearchResults(res.data.users.filter(u => u.is_active))
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setSearching(false)
+      }
+    }, 300)
+    return () => clearTimeout(timeout)
+  }, [search])
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
@@ -303,6 +322,33 @@ export default function Transcript() {
 
   return (
     <div>
+      {(user.role === 'supervisor' || user.role === 'coordinator') && (
+        <div style={{ position: 'relative', minWidth: 300 }}>
+          <input
+            value={search}
+            onChange={e => { setSearch(e.target.value); setSearchResults([]) }}
+            placeholder="Search for an officer..."
+            style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: `1px solid ${COLORS.border}`, fontSize: 13, color: COLORS.textDark, background: COLORS.white, boxSizing: 'border-box' }}
+          />
+          {searching && <div style={{ position: 'absolute', right: 12, top: 10, fontSize: 12, color: COLORS.textLight }}>Searching...</div>}
+          {searchResults.length > 0 && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 50, maxHeight: 300, overflowY: 'auto' }}>
+              {searchResults.map(u => (
+                <div
+                  key={u.id}
+                  onClick={() => { navigate(`/transcript/${u.id}`); setSearch(''); setSearchResults([]) }}
+                  style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: `1px solid ${COLORS.border}`, fontSize: 13, color: COLORS.textDark }}
+                  onMouseEnter={e => e.currentTarget.style.background = COLORS.bg}
+                  onMouseLeave={e => e.currentTarget.style.background = COLORS.white}
+                >
+                  <div style={{ fontWeight: 600 }}>{u.full_name}</div>
+                  <div style={{ fontSize: 11, color: COLORS.textLight }}>#{u.badge_number} · {u.rank} · {u.unit}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: COLORS.navy, margin: 0 }}>

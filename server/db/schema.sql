@@ -45,6 +45,15 @@ CREATE TABLE IF NOT EXISTS trainings (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Training instructors (many-to-many)
+CREATE TABLE IF NOT EXISTS training_instructors (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  training_id UUID NOT NULL REFERENCES trainings(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES users(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(training_id, user_id)
+);
+
 -- Enrollment requests
 CREATE TABLE IF NOT EXISTS enrollment_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

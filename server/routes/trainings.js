@@ -145,7 +145,7 @@ router.post('/', requireAuth, requireRole('coordinator'), async (req, res) => {
   const {
     title, category, description, instructor, instructor_id,
     location, session_date, start_time,
-    duration_hours, seat_capacity, is_required, is_out_of_state, training_type, section_number
+    duration_hours, seat_capacity, is_required, is_out_of_state, training_type, section_number, compliance_tag
   } = req.body;
 
   if (!title || !session_date) {

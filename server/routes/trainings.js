@@ -28,7 +28,7 @@ router.get('/', requireAuth, async (req, res) => {
         to_char(t.end_date, 'YYYY-MM-DD') as end_date,
         t.start_time, t.end_time, t.duration_hours, t.seat_capacity,
         t.no_seat_limit, t.cost, t.training_type, t.is_required,
-        t.is_out_of_state, t.is_archived, t.is_closed, t.section_number, t.created_by, t.created_at, t.updated_at,
+        t.is_out_of_state, t.is_archived, t.is_closed, t.section_number, t.instructor_id, t.created_by, t.created_at, t.updated_at,
         COUNT(er.id) FILTER (WHERE er.status IN ('approved', 'enrolled')) AS enrolled_count
       FROM trainings t
       LEFT JOIN enrollment_requests er ON t.id = er.training_id
@@ -53,7 +53,7 @@ router.get('/all', requireAuth, requireRole('coordinator', 'instructor'), async 
         to_char(t.end_date, 'YYYY-MM-DD') as end_date,
         t.start_time, t.end_time, t.duration_hours, t.seat_capacity,
         t.no_seat_limit, t.cost, t.training_type, t.is_required,
-        t.is_out_of_state, t.is_archived, t.is_closed, t.section_number, t.created_by, t.created_at, t.updated_at,
+        t.is_out_of_state, t.is_archived, t.is_closed, t.section_number, t.instructor_id, t.created_by, t.created_at, t.updated_at,
         COUNT(er.id) FILTER (WHERE er.status IN ('approved', 'enrolled')) AS enrolled_count
       FROM trainings t
       LEFT JOIN enrollment_requests er ON t.id = er.training_id
@@ -102,8 +102,16 @@ router.get('/:id', requireAuth, async (req, res) => {
         COUNT(er.id) FILTER (WHERE er.status IN ('approved', 'enrolled')) AS enrolled_count
       FROM trainings t
       LEFT JOIN enrollment_requests er ON t.id = er.training_id
+      SELECT t.*,
+        to_char(t.session_date, 'YYYY-MM-DD') as session_date,
+        to_char(t.end_date, 'YYYY-MM-DD') as end_date,
+        COUNT(er.id) FILTER (WHERE er.status IN ('approved', 'enrolled')) AS enrolled_count,
+        u.full_name as instructor_name
+      FROM trainings t
+      LEFT JOIN enrollment_requests er ON t.id = er.training_id
+      LEFT JOIN users u ON t.instructor_id = u.id
       WHERE t.id = $1
-      GROUP BY t.id
+      GROUP BY t.id, u.full_name
     `, [req.params.id]);
 
     if (!training.rows[0]) {
@@ -133,7 +141,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 // POST /api/trainings - create a training (coordinator only)
 router.post('/', requireAuth, requireRole('coordinator'), async (req, res) => {
   const {
-    title, category, description, instructor,
+    title, category, description, instructor, instructor_id,
     location, session_date, start_time,
     duration_hours, seat_capacity, is_required, is_out_of_state, training_type, section_number
   } = req.body;
@@ -145,18 +153,17 @@ router.post('/', requireAuth, requireRole('coordinator'), async (req, res) => {
   try {
     const result = await db.query(`
       INSERT INTO trainings 
-        (title, category, description, instructor, location, 
-        session_date, start_time, duration_hours, seat_capacity, 
-        is_required, is_out_of_state, training_type, section_number, created_by)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+        (title, category, description, instructor, instructor_id, location, 
+         session_date, start_time, duration_hours, seat_capacity, 
+         is_required, is_out_of_state, training_type, section_number, created_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
       RETURNING *
     `, [
-      title, category, description, instructor,
+      title, category, description, instructor || null, instructor_id || null,
       location, session_date, start_time,
       duration_hours, seat_capacity,
       is_required || false, is_out_of_state || false, training_type || 'internal', section_number || null, req.user.id
     ]);
-
     res.status(201).json({ training: result.rows[0] });
   } catch (err) {
     console.error(err);
@@ -166,22 +173,22 @@ router.post('/', requireAuth, requireRole('coordinator'), async (req, res) => {
 
 // PUT /api/trainings/:id - update a training (coordinator only)
 router.put('/:id', requireAuth, requireRole('coordinator'), async (req, res) => {
-  const { title, category, description, instructor, location, session_date, end_date, start_time, end_time, duration_hours, seat_capacity, no_seat_limit, cost, training_type, is_required, is_out_of_state, section_number } = req.body;
+  const { title, category, description, instructor, instructor_id, location, session_date, end_date, start_time, end_time, duration_hours, seat_capacity, no_seat_limit, cost, training_type, is_required, is_out_of_state, section_number } = req.body;
   try {
     const result = await db.query(`
       UPDATE trainings SET
-        title=$1, category=$2, description=$3, instructor=$4, location=$5,
-        session_date=$6, end_date=$7, start_time=$8, end_time=$9,
-        duration_hours=$10, seat_capacity=$11, no_seat_limit=$12,
-        cost=$13, training_type=$14, is_out_of_state=$15, is_required=$16,
-        section_number=$17
-      WHERE id=$18 AND is_archived=false
+        title=$1, category=$2, description=$3, instructor=$4, instructor_id=$5, location=$6,
+        session_date=$7, end_date=$8, start_time=$9, end_time=$10,
+        duration_hours=$11, seat_capacity=$12, no_seat_limit=$13,
+        cost=$14, training_type=$15, is_out_of_state=$16, is_required=$17,
+        section_number=$18
+      WHERE id=$19 AND is_archived=false
     RETURNING *
   `, [
-    title, category, description, instructor, location,
+    title, category, description, instructor, instructor_id || null, location,
     session_date || null, end_date || null, start_time || null, end_time || null,
     duration_hours || null, seat_capacity || null, no_seat_limit || false,
-    cost || null, training_type, is_out_of_state || false, is_required || false, 
+    cost || null, training_type, is_out_of_state || false, is_required || false,
     section_number || null, req.params.id
   ]);
     if (!result.rows[0]) {

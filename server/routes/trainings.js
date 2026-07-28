@@ -28,7 +28,7 @@ router.get('/', requireAuth, async (req, res) => {
         to_char(t.end_date, 'YYYY-MM-DD') as end_date,
         t.start_time, t.end_time, t.duration_hours, t.seat_capacity,
         t.no_seat_limit, t.cost, t.training_type, t.is_required,
-        t.is_out_of_state, t.is_archived, t.is_closed, t.section_number, t.instructor_id, t.created_by, t.created_at, t.updated_at,
+        t.is_out_of_state, t.is_archived, t.is_closed, t.section_number, t.compliance_tag, t.instructor_id, t.created_by, t.created_at, t.updated_at,
         (SELECT json_agg(json_build_object('id', u.id, 'first_name', u.first_name, 'last_name', u.last_name, 'full_name', u.full_name))
          FROM training_instructors ti JOIN users u ON ti.user_id = u.id
          WHERE ti.training_id = t.id) as instructors,
@@ -56,7 +56,7 @@ router.get('/all', requireAuth, requireRole('coordinator', 'instructor'), async 
         to_char(t.end_date, 'YYYY-MM-DD') as end_date,
         t.start_time, t.end_time, t.duration_hours, t.seat_capacity,
         t.no_seat_limit, t.cost, t.training_type, t.is_required,
-        t.is_out_of_state, t.is_archived, t.is_closed, t.section_number, t.instructor_id, t.created_by, t.created_at, t.updated_at,
+        t.is_out_of_state, t.is_archived, t.is_closed, t.section_number, t.compliance_tag, t.instructor_id, t.created_by, t.created_at, t.updated_at,
         (SELECT json_agg(json_build_object('id', u.id, 'first_name', u.first_name, 'last_name', u.last_name, 'full_name', u.full_name))
          FROM training_instructors ti JOIN users u ON ti.user_id = u.id
          WHERE ti.training_id = t.id) as instructors,
@@ -104,7 +104,7 @@ router.get('/:id', requireAuth, async (req, res) => {
         to_char(t.end_date, 'YYYY-MM-DD') as end_date,
         t.start_time, t.end_time, t.duration_hours, t.seat_capacity,
         t.no_seat_limit, t.cost, t.training_type, t.is_required,
-        t.is_out_of_state, t.is_archived, t.is_closed, t.section_number, t.instructor_id,
+        t.is_out_of_state, t.is_archived, t.is_closed, t.section_number, t.compliance_tag, t.instructor_id,
         t.created_by, t.created_at, t.updated_at,
         (SELECT json_agg(json_build_object('id', u.id, 'first_name', u.first_name, 'last_name', u.last_name, 'full_name', u.full_name))
          FROM training_instructors ti JOIN users u ON ti.user_id = u.id
@@ -157,14 +157,14 @@ router.post('/', requireAuth, requireRole('coordinator'), async (req, res) => {
       INSERT INTO trainings 
         (title, category, description, instructor, instructor_id, location, 
          session_date, start_time, duration_hours, seat_capacity, 
-         is_required, is_out_of_state, training_type, section_number, created_by)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+         is_required, is_out_of_state, training_type, section_number, compliance_tag, created_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
       RETURNING *
     `, [
       title, category, description, instructor || null, instructor_id || null,
       location, session_date, start_time,
       duration_hours, seat_capacity,
-      is_required || false, is_out_of_state || false, training_type || 'internal', section_number || null, req.user.id
+      is_required || false, is_out_of_state || false, training_type || 'internal', section_number || null, compliance_tag || null, req.user.id
     ]);
     res.status(201).json({ training: result.rows[0] });
   } catch (err) {
@@ -175,7 +175,7 @@ router.post('/', requireAuth, requireRole('coordinator'), async (req, res) => {
 
 // PUT /api/trainings/:id - update a training (coordinator only)
 router.put('/:id', requireAuth, requireRole('coordinator'), async (req, res) => {
-  const { title, category, description, instructor, instructor_id, instructor_ids, location, session_date, end_date, start_time, end_time, duration_hours, seat_capacity, no_seat_limit, cost, training_type, is_required, is_out_of_state, section_number } = req.body;
+  const { title, category, description, instructor, instructor_id, instructor_ids, location, session_date, end_date, start_time, end_time, duration_hours, seat_capacity, no_seat_limit, cost, training_type, is_required, is_out_of_state, section_number, compliance_tag } = req.body;
     try {
       const result = await db.query(`
       UPDATE trainings SET
@@ -183,15 +183,15 @@ router.put('/:id', requireAuth, requireRole('coordinator'), async (req, res) => 
         session_date=$7, end_date=$8, start_time=$9, end_time=$10,
         duration_hours=$11, seat_capacity=$12, no_seat_limit=$13,
         cost=$14, training_type=$15, is_out_of_state=$16, is_required=$17,
-        section_number=$18
-      WHERE id=$19 AND is_archived=false
+        section_number=$18, compliance_tag=$19
+      WHERE id=$20 AND is_archived=false
     RETURNING *
   `, [
     title, category, description, instructor, instructor_id || null, location,
     session_date || null, end_date || null, start_time || null, end_time || null,
     duration_hours || null, seat_capacity || null, no_seat_limit || false,
     cost || null, training_type, is_out_of_state || false, is_required || false,
-    section_number || null, req.params.id
+    section_number || null, compliance_tag || null, req.params.id
   ]);
     if (!result.rows[0]) {
       return res.status(404).json({ error: 'Training not found' });

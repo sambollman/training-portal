@@ -213,6 +213,7 @@ router.put('/:id', requireAuth, requireRole('coordinator'), async (req, res) => 
     res.status(500).json({ error: 'Failed to update training' });
   }
 });
+
 // DELETE /api/trainings/:id - archive a training (coordinator only)
 router.delete('/:id', requireAuth, requireRole('coordinator'), async (req, res) => {
   try {

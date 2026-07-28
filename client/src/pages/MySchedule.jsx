@@ -157,6 +157,7 @@ export default function MySchedule() {
                     <div style={{ fontWeight: 700, color: COLORS.textDark, fontSize: 15 }}>{r.title}</div>
                     <div style={{ color: COLORS.textLight, fontSize: 12, marginTop: 2 }}>
                       {r.session_date ? new Date(r.session_date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
+                      {r.start_time ? ` · ${(() => { const [h, m] = r.start_time.split(':'); const hour = parseInt(h); return `${hour % 12 || 12}:${m} ${hour >= 12 ? 'PM' : 'AM'}` })()}` : ''}
                       {r.location ? ` · ${r.location}` : ''}
                       {' · '}{r.source === 'external' ? 'External training request' : r.request_type === 'supervisor_enrolled' ? 'Enrolled by supervisor' : 'Self-requested'}
                     </div>

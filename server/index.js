@@ -37,6 +37,7 @@ const specializedRoutes = require('./routes/specialized');
 const approvalRoutes = require('./routes/approvals');
 const importRoutes = require('./routes/import');
 const userimportRoutes = require('./routes/userimport');
+const complianceRoutes = require('./routes/compliance');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/trainings', trainingRoutes);
@@ -49,6 +50,7 @@ app.use('/api/transcript', transcriptRoutes);
 app.use('/api/specialized', specializedRoutes);
 app.use('/api/import', importRoutes);
 app.use('/api/import', userimportRoutes);
+app.use('/api/compliance', complianceRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });

@@ -16,6 +16,7 @@ import RequestTraining from './pages/RequestTraining'
 import Transcript from './pages/Transcript'
 import Calendar from './pages/Calendar'
 import ImportTraining from './pages/ImportTraining'
+import Compliance from './pages/Compliance'
 
 export default function App() {
   const { user, loading } = useAuth()
@@ -39,6 +40,7 @@ export default function App() {
     <Route path="/pending" element={<Pending />} />
     <Route path="/enroll" element={<Enroll />} />
     <Route path="/all-requests" element={<AllRequests />} />
+    <Route path="/compliance" element={<Compliance />} />
   </>
 )}
 {(user.role === 'coordinator' || user.role === 'instructor') && (

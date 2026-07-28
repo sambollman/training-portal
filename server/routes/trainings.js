@@ -143,7 +143,7 @@ router.get('/:id', requireAuth, async (req, res) => {
 // POST /api/trainings - create a training (coordinator only)
 router.post('/', requireAuth, requireRole('coordinator'), async (req, res) => {
   const {
-    title, category, description, instructor, instructor_id,
+    title, category, description, instructor, instructor_id, instructor_ids,
     location, session_date, start_time,
     duration_hours, seat_capacity, is_required, is_out_of_state, training_type, section_number, compliance_tag
   } = req.body;
@@ -166,6 +166,16 @@ router.post('/', requireAuth, requireRole('coordinator'), async (req, res) => {
       duration_hours, seat_capacity,
       is_required || false, is_out_of_state || false, training_type || 'internal', section_number || null, compliance_tag || null, req.user.id
     ]);
+
+    // Save instructors
+    if (instructor_ids && instructor_ids.length > 0) {
+      for (const userId of instructor_ids) {
+        await db.query(
+          'INSERT INTO training_instructors (training_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [result.rows[0].id, userId]
+        );
+      }
+    }
     res.status(201).json({ training: result.rows[0] });
   } catch (err) {
     console.error(err);

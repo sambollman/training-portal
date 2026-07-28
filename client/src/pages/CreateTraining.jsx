@@ -52,6 +52,7 @@ export default function CreateTraining() {
     is_required: false,
     is_out_of_state: false,
     description: '',
+    compliance_tag: ''
   })
 
   const set = (field, value) => setForm(prev => ({ ...prev, [field]: value }))
@@ -109,6 +110,9 @@ export default function CreateTraining() {
           </Field>
           <Field label="Section Number">
             <input style={inputStyle} value={form.section_number} onChange={e => set('section_number', e.target.value)} placeholder="From POST board" />
+          </Field>
+          <Field label="Compliance Tag">
+            <input style={inputStyle} value={form.compliance_tag} onChange={e => set('compliance_tag', e.target.value)} placeholder="e.g. Annual Firearms Qual 2026" />
           </Field>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>

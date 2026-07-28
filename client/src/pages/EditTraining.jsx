@@ -68,8 +68,8 @@ export default function EditTraining() {
         is_required: t.is_required || false,
         section_number: t.section_number || '',
         is_out_of_state: t.is_out_of_state || false,
-        instructor_id: t.instructor_id || '',
         description: t.description || '',
+        instructor_ids: tr.data.training.instructors ? tr.data.training.instructors.map(i => i.id) : [],
       })
       setExistingFiles(fr.data.files)
     }).finally(() => setLoading(false))

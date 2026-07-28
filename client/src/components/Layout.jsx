@@ -77,7 +77,7 @@ export default function Layout({ children }) {
           <NavLink to="/trainings" style={navStyle}>Available Trainings</NavLink>
           <NavLink to="/calendar" style={navStyle}>Calendar</NavLink>
           <NavLink to="/my-schedule" style={navStyle}>My Schedule</NavLink>
-          <NavLink to="/transcript" style={navStyle}>My Transcript</NavLink>
+          <NavLink to="/transcript" style={navStyle}>Transcript</NavLink>
           <NavLink to="/request-training" style={navStyle}>Request a Training</NavLink>
         </div>
         {isSupervisor && (

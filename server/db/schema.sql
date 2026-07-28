@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS trainings (
   is_archived BOOLEAN DEFAULT false,
   is_closed BOOLEAN DEFAULT false,
   section_number VARCHAR,
+  instructor_id UUID REFERENCES users(id),
   created_by UUID REFERENCES users(id),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()

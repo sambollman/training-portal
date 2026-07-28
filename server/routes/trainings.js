@@ -29,6 +29,9 @@ router.get('/', requireAuth, async (req, res) => {
         t.start_time, t.end_time, t.duration_hours, t.seat_capacity,
         t.no_seat_limit, t.cost, t.training_type, t.is_required,
         t.is_out_of_state, t.is_archived, t.is_closed, t.section_number, t.instructor_id, t.created_by, t.created_at, t.updated_at,
+        (SELECT json_agg(json_build_object('id', u.id, 'first_name', u.first_name, 'last_name', u.last_name, 'full_name', u.full_name))
+         FROM training_instructors ti JOIN users u ON ti.user_id = u.id
+         WHERE ti.training_id = t.id) as instructors,
         COUNT(er.id) FILTER (WHERE er.status IN ('approved', 'enrolled')) AS enrolled_count
       FROM trainings t
       LEFT JOIN enrollment_requests er ON t.id = er.training_id
@@ -54,6 +57,9 @@ router.get('/all', requireAuth, requireRole('coordinator', 'instructor'), async 
         t.start_time, t.end_time, t.duration_hours, t.seat_capacity,
         t.no_seat_limit, t.cost, t.training_type, t.is_required,
         t.is_out_of_state, t.is_archived, t.is_closed, t.section_number, t.instructor_id, t.created_by, t.created_at, t.updated_at,
+        (SELECT json_agg(json_build_object('id', u.id, 'first_name', u.first_name, 'last_name', u.last_name, 'full_name', u.full_name))
+         FROM training_instructors ti JOIN users u ON ti.user_id = u.id
+         WHERE ti.training_id = t.id) as instructors,
         COUNT(er.id) FILTER (WHERE er.status IN ('approved', 'enrolled')) AS enrolled_count
       FROM trainings t
       LEFT JOIN enrollment_requests er ON t.id = er.training_id
@@ -98,20 +104,16 @@ router.get('/:id', requireAuth, async (req, res) => {
         to_char(t.end_date, 'YYYY-MM-DD') as end_date,
         t.start_time, t.end_time, t.duration_hours, t.seat_capacity,
         t.no_seat_limit, t.cost, t.training_type, t.is_required,
-        t.is_out_of_state, t.is_archived, t.is_closed, t.section_number, t.instructor_id, t.created_by, t.created_at, t.updated_at,
+        t.is_out_of_state, t.is_archived, t.is_closed, t.section_number, t.instructor_id,
+        t.created_by, t.created_at, t.updated_at,
+        (SELECT json_agg(json_build_object('id', u.id, 'first_name', u.first_name, 'last_name', u.last_name, 'full_name', u.full_name))
+         FROM training_instructors ti JOIN users u ON ti.user_id = u.id
+         WHERE ti.training_id = t.id) as instructors,
         COUNT(er.id) FILTER (WHERE er.status IN ('approved', 'enrolled')) AS enrolled_count
       FROM trainings t
       LEFT JOIN enrollment_requests er ON t.id = er.training_id
-      SELECT t.*,
-        to_char(t.session_date, 'YYYY-MM-DD') as session_date,
-        to_char(t.end_date, 'YYYY-MM-DD') as end_date,
-        COUNT(er.id) FILTER (WHERE er.status IN ('approved', 'enrolled')) AS enrolled_count,
-        u.full_name as instructor_name
-      FROM trainings t
-      LEFT JOIN enrollment_requests er ON t.id = er.training_id
-      LEFT JOIN users u ON t.instructor_id = u.id
       WHERE t.id = $1
-      GROUP BY t.id, u.full_name
+      GROUP BY t.id
     `, [req.params.id]);
 
     if (!training.rows[0]) {
@@ -173,8 +175,7 @@ router.post('/', requireAuth, requireRole('coordinator'), async (req, res) => {
 
 // PUT /api/trainings/:id - update a training (coordinator only)
 router.put('/:id', requireAuth, requireRole('coordinator'), async (req, res) => {
-  const { title, category, description, instructor, instructor_id, location, session_date, end_date, start_time, end_time, duration_hours, seat_capacity, no_seat_limit, cost, training_type, is_required, is_out_of_state, section_number } = req.body;
-  try {
+  const { title, category, description, instructor, instructor_id, instructor_ids, location, session_date, end_date, start_time, end_time, duration_hours, seat_capacity, no_seat_limit, cost, training_type, is_required, is_out_of_state, section_number } = req.body;
     const result = await db.query(`
       UPDATE trainings SET
         title=$1, category=$2, description=$3, instructor=$4, instructor_id=$5, location=$6,
@@ -194,6 +195,18 @@ router.put('/:id', requireAuth, requireRole('coordinator'), async (req, res) => 
     if (!result.rows[0]) {
       return res.status(404).json({ error: 'Training not found' });
     }
+  // Update instructors
+  await db.query('DELETE FROM training_instructors WHERE training_id = $1', [req.params.id]);
+  if (instructor_ids && instructor_ids.length > 0) {
+    for (const userId of instructor_ids) {
+      await db.query(
+        'INSERT INTO training_instructors (training_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+        [req.params.id, userId]
+      );
+    }
+  }
+
+res.json({ training: result.rows[0] });
 
     res.json({ training: result.rows[0] });
   } catch (err) {
@@ -279,7 +292,19 @@ router.post('/:id/files', requireAuth, requireRole('coordinator'), upload.array(
       inserted.push(result.rows[0]);
     }
 
-    res.status(201).json({ files: inserted });
+    // Save instructors
+    if (instructor_ids && instructor_ids.length > 0) {
+      for (const userId of instructor_ids) {
+        await db.query(
+          'INSERT INTO training_instructors (training_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
+          [result.rows[0].id, userId]
+        );
+      }
+    }
+
+res.status(201).json({ training: result.rows[0] });
+
+    
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to upload files' });

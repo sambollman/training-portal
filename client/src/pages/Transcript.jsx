@@ -313,6 +313,10 @@ export default function Transcript() {
             {records.length} training{records.length !== 1 ? 's' : ''} · {totalHours.toFixed(1)} total hours
           </p>
         </div>
+        <button
+          onClick={() => window.open(`/api/transcript/${targetId}/pdf`)}
+          style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: `1px solid ${COLORS.border}`, background: COLORS.white, color: COLORS.textMid }}
+        >⬇ Download PDF</button>
         {(user.role === 'supervisor' || user.role === 'coordinator') && (
           <button onClick={() => setShowAddForm(!showAddForm)} style={{ padding: '8px 16px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: 'none', background: COLORS.navy, color: COLORS.white }}>
             + Add Record

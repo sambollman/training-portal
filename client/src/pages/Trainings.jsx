@@ -153,7 +153,7 @@ export default function Trainings() {
                       { label: 'Date', val: t.session_date ? (t.end_date ? `${new Date(t.session_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(t.end_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : new Date(t.session_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })) : '—' },
                       { label: 'Duration', val: t.duration_hours ? `${t.duration_hours} hrs` : '—' },
                       { label: 'Location', val: t.location || '—' },
-                      { label: 'Instructor', val: t.instructor || '—' },
+                      { label: 'Instructor', val: t.instructors && t.instructors.length > 0 ? t.instructors.map(i => `${i.first_name} ${i.last_name}`).join(', ') : t.instructor || '—' },
                     ].map(({ label, val }) => (
                       <div key={label}>
                         <div style={{ fontSize: 10, color: COLORS.textLight, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 2 }}>{label}</div>

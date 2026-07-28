@@ -217,4 +217,129 @@ router.delete('/record/:recordId/certificates/:certId', requireAuth, async (req,
   }
 });
 
+const PDFDocument = require('pdfkit');
+
+// GET /api/transcript/:officerId/pdf - generate PDF transcript
+router.get('/:officerId/pdf', requireAuth, async (req, res) => {
+  const { officerId } = req.params;
+
+  if (req.user.role === 'officer' && req.user.id !== officerId) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  try {
+    const userResult = await db.query('SELECT * FROM users WHERE id = $1', [officerId]);
+    if (!userResult.rows[0]) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const officer = userResult.rows[0];
+
+    const records = await db.query(`
+      SELECT tr.*,
+        to_char(tr.training_date, 'MM/DD/YYYY') as training_date_fmt,
+        to_char(tr.end_date, 'MM/DD/YYYY') as end_date_fmt,
+        to_char(tr.completion_date, 'MM/DD/YYYY') as completion_date_fmt,
+        to_char(tr.certification_expiration, 'MM/DD/YYYY') as cert_expiration_fmt
+      FROM training_records tr
+      WHERE tr.officer_id = $1
+      ORDER BY tr.training_date DESC NULLS LAST
+    `, [officerId]);
+
+    const doc = new PDFDocument({ margin: 50 });
+    const filename = `transcript_${officer.last_name}_${officer.first_name}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    doc.pipe(res);
+
+    // Header
+    doc.fontSize(20).font('Helvetica-Bold').text('Training Transcript', { align: 'center' });
+    doc.moveDown(0.5);
+    doc.fontSize(14).font('Helvetica').text(`${officer.first_name} ${officer.last_name}`, { align: 'center' });
+    if (officer.rank) doc.fontSize(11).text(officer.rank + (officer.unit ? ` — ${officer.unit}` : ''), { align: 'center' });
+    if (officer.badge_number) doc.fontSize(11).text(`Badge #${officer.badge_number}`, { align: 'center' });
+    doc.moveDown(0.5);
+
+    const totalHours = records.rows.reduce((sum, r) => sum + (parseFloat(r.hours) || 0), 0);
+    doc.fontSize(11).text(`Total Training Hours: ${totalHours.toFixed(1)}`, { align: 'center' });
+    doc.fontSize(10).fillColor('#888888').text(`Generated: ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'long', day: 'numeric', year: 'numeric' })}`, { align: 'center' });
+    doc.fillColor('#000000');
+    doc.moveDown(1);
+    doc.moveTo(50, doc.y).lineTo(562, doc.y).stroke();
+    doc.moveDown(0.5);
+
+    if (records.rows.length === 0) {
+      doc.fontSize(11).text('No training records found.', { align: 'center' });
+    } else {
+      for (const r of records.rows) {
+        // Training title and badges
+        doc.fontSize(12).font('Helvetica-Bold').text(r.training_title);
+        doc.font('Helvetica');
+
+        const badges = [];
+        if (r.source === 'portal') badges.push('Portal');
+        if (r.source === 'external') badges.push('External');
+        if (r.source === 'manual') badges.push('Manual Entry');
+        if (r.source === 'import') badges.push('Imported');
+        if (r.certified) badges.push('Certified');
+        if (badges.length > 0) {
+          doc.fontSize(9).fillColor('#555555').text(badges.join(' · '));
+          doc.fillColor('#000000');
+        }
+
+        doc.moveDown(0.3);
+
+        // Details in two columns
+        const details = [];
+        if (r.training_date_fmt) details.push(['Date', r.training_date_fmt + (r.end_date_fmt ? ` – ${r.end_date_fmt}` : '')]);
+        if (r.location) details.push(['Location', r.location]);
+        if (r.instructor) details.push(['Instructor', r.instructor]);
+        if (r.hours) details.push(['Hours', r.hours.toString()]);
+        if (r.status) details.push(['Status', r.status]);
+        if (r.score) details.push(['Score', r.score]);
+        if (r.cost) details.push(['Cost', `$${parseFloat(r.cost).toFixed(2)}`]);
+        if (r.certification_name) details.push(['Certification', r.certification_name]);
+        if (r.certification_hours) details.push(['Cert Hours', r.certification_hours.toString()]);
+        if (r.cert_expiration_fmt) details.push(['Cert Expires', r.cert_expiration_fmt]);
+
+        const colWidth = 250;
+        const left = 50;
+        const right = 310;
+        let col = 0;
+        let startY = doc.y;
+
+        for (const [label, value] of details) {
+          const x = col === 0 ? left : right;
+          if (col === 0 && details.indexOf([label, value]) > 0) startY = doc.y;
+          doc.fontSize(9).fillColor('#666666').text(label.toUpperCase(), x, doc.y, { continued: true, width: 80 });
+          doc.fillColor('#000000').text(' ' + value, { width: colWidth - 80 });
+          col = col === 0 ? 1 : 0;
+          if (col === 0) doc.moveDown(0.1);
+        }
+
+        if (r.remarks) {
+          doc.moveDown(0.3);
+          doc.fontSize(9).fillColor('#555555').text('Remarks: ', { continued: true });
+          doc.fillColor('#000000').text(r.remarks);
+        }
+
+        doc.moveDown(0.5);
+        doc.moveTo(50, doc.y).lineTo(562, doc.y).strokeColor('#cccccc').stroke();
+        doc.strokeColor('#000000');
+        doc.moveDown(0.5);
+
+        // Page break check
+        if (doc.y > 700) {
+          doc.addPage();
+        }
+      }
+    }
+
+    doc.end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to generate PDF' });
+  }
+});
+
 module.exports = router;

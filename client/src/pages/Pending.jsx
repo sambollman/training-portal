@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useAuth } from '../context/AuthContext'
 import axios from 'axios'
 
 const COLORS = {
@@ -10,6 +11,7 @@ const COLORS = {
 }
 
 export default function Pending() {
+  const { user } = useAuth()
   const [approvals, setApprovals] = useState([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
@@ -21,15 +23,19 @@ export default function Pending() {
   const [toast, setToast] = useState(null)
   const [loadingNext, setLoadingNext] = useState(false)
   const [previousSteps, setPreviousSteps] = useState([])
+  const [additionalApprover, setAdditionalApprover] = useState('')
+  const [allApprovers, setAllApprovers] = useState([])
 
   useEffect(() => {
     Promise.all([
       axios.get('/api/approvals/my-pending'),
       axios.get('/api/external/my-pending'),
-    ]).then(([pr, er]) => {
+      axios.get('/api/admin/users'),
+    ]).then(([pr, er, ur]) => {
       const portal = pr.data.approvals.map(a => ({ ...a, source: 'portal', display_title: a.training_title }))
       const external = er.data.approvals.map(a => ({ ...a, source: 'external', display_title: a.training_name }))
       setApprovals([...portal, ...external].sort((a, b) => new Date(a.created_at) - new Date(b.created_at)))
+      setAllApprovers(ur.data.users.filter(u => u.is_active))
     }).finally(() => setLoading(false))
   }, [])
 
@@ -44,7 +50,8 @@ export default function Pending() {
     setComment('')
     setSelectedNextApprover('')
     setNextApprovers([])
-     setPreviousSteps([])
+    setPreviousSteps([])
+    setAdditionalApprover('')
 
     try {
       const endpoint = approval.source === 'external'
@@ -56,7 +63,6 @@ export default function Pending() {
       console.error(err)
     }
   }
-  
 
   const handleDecisionChange = async (d) => {
     setDecision(d)
@@ -68,7 +74,7 @@ export default function Pending() {
       (rank === 'captain' && !isOutOfState) ||
       rank === 'assistant chief'
 
-    if (!isFinal) {
+    if (d !== 'returned' && !isFinal) {
       setLoadingNext(true)
       try {
         const res = await axios.get(`/api/approvals/next-approvers/${encodeURIComponent(selected.approver_rank)}`)
@@ -84,8 +90,8 @@ export default function Pending() {
   }
 
   const handleSubmit = async () => {
-    if (!decision) { showToast('Please select approve or deny', 'error'); return }
-    if (nextApprovers.length > 0 && !selectedNextApprover) {
+    if (!decision) { showToast('Please select a decision', 'error'); return }
+    if (decision !== 'returned' && nextApprovers.length > 0 && !selectedNextApprover) {
       showToast('Please select who to forward this to', 'error'); return
     }
     setSubmitting(true)
@@ -93,15 +99,20 @@ export default function Pending() {
       const endpoint = selected.source === 'external'
         ? `/api/external/act/${selected.id}`
         : `/api/approvals/act/${selected.id}`
-        const res = await axios.post(endpoint, {
+      const res = await axios.post(endpoint, {
         decision,
         comment,
         next_approver_id: selectedNextApprover || null,
+        additional_approver_id: additionalApprover || null,
       })
       setApprovals(prev => prev.filter(a => a.id !== selected.id))
       setSelected(null)
       window.dispatchEvent(new Event('approval-acted'))
-      showToast(res.data.is_final ? 'Decision recorded. Officer has been notified.' : 'Decision recorded. Request forwarded to next approver.')
+      if (res.data.returned) {
+        showToast('Request sent back to officer for more information.')
+      } else {
+        showToast(res.data.is_final ? 'Decision recorded. Officer has been notified.' : 'Decision recorded. Request forwarded to next approver.')
+      }
     } catch (err) {
       showToast(err.response?.data?.error || 'Failed to submit decision', 'error')
     } finally {
@@ -224,18 +235,18 @@ export default function Pending() {
             </div>
 
             {previousSteps.length > 0 && (
-              <div style={{ padding: '0 22px 18px' }}>
+              <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: '16px 22px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Previous Decisions</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {previousSteps.map(step => (
-                      <div key={step.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 14px', background: COLORS.bg, borderRadius: 6 }}>
+                    <div key={step.id} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', padding: '10px 14px', background: COLORS.bg, borderRadius: 6 }}>
                       <div style={{
                         width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700,
-                        background: step.decision === 'approved' ? COLORS.successLight : COLORS.dangerLight,
-                        color: step.decision === 'approved' ? COLORS.success : COLORS.danger,
+                        background: step.decision === 'approved' ? COLORS.successLight : step.decision === 'returned' ? COLORS.warningLight : COLORS.dangerLight,
+                        color: step.decision === 'approved' ? COLORS.success : step.decision === 'returned' ? COLORS.warning : COLORS.danger,
                       }}>
-                        {step.decision === 'approved' ? '✓' : '✗'}
+                        {step.decision === 'approved' ? '✓' : step.decision === 'returned' ? '↩' : '✗'}
                       </div>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -248,9 +259,9 @@ export default function Pending() {
                         <div style={{ marginTop: 4 }}>
                           <span style={{
                             fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase',
-                            background: step.decision === 'approved' ? COLORS.successLight : COLORS.dangerLight,
-                            color: step.decision === 'approved' ? COLORS.success : COLORS.danger,
-                          }}>{step.decision}</span>
+                            background: step.decision === 'approved' ? COLORS.successLight : step.decision === 'returned' ? COLORS.warningLight : COLORS.dangerLight,
+                            color: step.decision === 'approved' ? COLORS.success : step.decision === 'returned' ? COLORS.warning : COLORS.danger,
+                          }}>{step.decision === 'returned' ? 'Returned for Info' : step.decision}</span>
                           {step.comment && <div style={{ fontSize: 12, color: COLORS.textMid, marginTop: 4, fontStyle: 'italic' }}>"{step.comment}"</div>}
                         </div>
                       </div>
@@ -265,17 +276,12 @@ export default function Pending() {
               <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.navy, marginBottom: 16 }}>Your Decision</div>
 
               <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-                <button
-                  onClick={() => handleDecisionChange('approved')}
-                  style={{ flex: 1, padding: '10px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: `2px solid ${decision === 'approved' ? COLORS.success : COLORS.border}`, background: decision === 'approved' ? COLORS.successLight : COLORS.white, color: decision === 'approved' ? COLORS.success : COLORS.textMid }}
-                >Approve</button>
-                <button
-                  onClick={() => handleDecisionChange('denied')}
-                  style={{ flex: 1, padding: '10px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: `2px solid ${decision === 'denied' ? COLORS.danger : COLORS.border}`, background: decision === 'denied' ? COLORS.dangerLight : COLORS.white, color: decision === 'denied' ? COLORS.danger : COLORS.textMid }}
-                >Deny</button>
+                <button onClick={() => handleDecisionChange('approved')} style={{ flex: 1, padding: '10px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: `2px solid ${decision === 'approved' ? COLORS.success : COLORS.border}`, background: decision === 'approved' ? COLORS.successLight : COLORS.white, color: decision === 'approved' ? COLORS.success : COLORS.textMid }}>Approve</button>
+                <button onClick={() => handleDecisionChange('denied')} style={{ flex: 1, padding: '10px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: `2px solid ${decision === 'denied' ? COLORS.danger : COLORS.border}`, background: decision === 'denied' ? COLORS.dangerLight : COLORS.white, color: decision === 'denied' ? COLORS.danger : COLORS.textMid }}>Deny</button>
+                <button onClick={() => handleDecisionChange('returned')} style={{ flex: 1, padding: '10px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: `2px solid ${decision === 'returned' ? COLORS.warning : COLORS.border}`, background: decision === 'returned' ? COLORS.warningLight : COLORS.white, color: decision === 'returned' ? COLORS.warning : COLORS.textMid }}>Request More Info</button>
               </div>
 
-              {decision && !isFinal && (
+              {decision && decision !== 'returned' && !isFinal && (
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
                     Forward to <span style={{ color: COLORS.danger }}>*</span>
@@ -283,23 +289,23 @@ export default function Pending() {
                   {loadingNext ? (
                     <div style={{ fontSize: 13, color: COLORS.textLight }}>Loading...</div>
                   ) : (
-                    <select
-                      value={selectedNextApprover}
-                      onChange={e => setSelectedNextApprover(e.target.value)}
-                      style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: `1px solid ${COLORS.border}`, fontSize: 13, color: COLORS.textDark, background: COLORS.white }}
-                    >
+                    <select value={selectedNextApprover} onChange={e => setSelectedNextApprover(e.target.value)} style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: `1px solid ${COLORS.border}`, fontSize: 13, color: COLORS.textDark, background: COLORS.white }}>
                       <option value="">Select next approver...</option>
                       {nextApprovers.map(a => (
-                        <option key={a.id} value={a.id}>
-                          {a.last_name}, {a.first_name} — {a.rank} {a.unit ? `· ${a.unit}` : ''}
-                        </option>
+                        <option key={a.id} value={a.id}>{a.last_name}, {a.first_name} — {a.rank} {a.unit ? `· ${a.unit}` : ''}</option>
                       ))}
                     </select>
                   )}
                 </div>
               )}
 
-              {decision && isFinal && (
+              {decision === 'returned' && (
+                <div style={{ marginBottom: 16, padding: '10px 14px', background: COLORS.warningLight, borderRadius: 6, fontSize: 13, color: COLORS.warning }}>
+                  The officer will be notified to provide more information and can resubmit their request.
+                </div>
+              )}
+
+              {decision && decision !== 'returned' && isFinal && (
                 <div style={{ marginBottom: 16, padding: '10px 14px', background: COLORS.bg, borderRadius: 6, fontSize: 13, color: COLORS.textMid }}>
                   This is the final step — the officer will be notified of the outcome.
                 </div>
@@ -307,19 +313,24 @@ export default function Pending() {
 
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Comment (optional)</div>
-                <textarea
-                  value={comment}
-                  onChange={e => setComment(e.target.value)}
-                  placeholder="Add a note for the record..."
-                  style={{ width: '100%', height: 80, borderRadius: 6, border: `1px solid ${COLORS.border}`, padding: 12, fontSize: 13, resize: 'none', boxSizing: 'border-box', color: COLORS.textDark, background: COLORS.white }}
-                />
+                <textarea value={comment} onChange={e => setComment(e.target.value)} placeholder="Add a note for the record..." style={{ width: '100%', height: 80, borderRadius: 6, border: `1px solid ${COLORS.border}`, padding: 12, fontSize: 13, resize: 'none', boxSizing: 'border-box', color: COLORS.textDark, background: COLORS.white }} />
               </div>
 
-              <button
-                onClick={handleSubmit}
-                disabled={submitting || !decision}
-                style={{ width: '100%', padding: '11px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: submitting || !decision ? 'default' : 'pointer', border: 'none', background: !decision ? COLORS.border : COLORS.navy, color: !decision ? COLORS.textLight : COLORS.white }}
-              >{submitting ? 'Submitting...' : 'Submit Decision'}</button>
+              {decision && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Also Add to Chain (optional)</div>
+                  <select value={additionalApprover} onChange={e => setAdditionalApprover(e.target.value)} style={{ width: '100%', padding: '9px 12px', borderRadius: 6, border: `1px solid ${COLORS.border}`, fontSize: 13, color: COLORS.textDark, background: COLORS.white }}>
+                    <option value="">No additional approver</option>
+                    {allApprovers.filter(a => a.id !== user?.id).map(a => (
+                      <option key={a.id} value={a.id}>{a.last_name}, {a.first_name} — {a.rank} {a.unit ? `· ${a.unit}` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <button onClick={handleSubmit} disabled={submitting || !decision} style={{ width: '100%', padding: '11px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: submitting || !decision ? 'default' : 'pointer', border: 'none', background: !decision ? COLORS.border : COLORS.navy, color: !decision ? COLORS.textLight : COLORS.white }}>
+                {submitting ? 'Submitting...' : 'Submit Decision'}
+              </button>
             </div>
           </div>
         )}

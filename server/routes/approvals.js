@@ -115,6 +115,7 @@ router.post('/submit', requireAuth, async (req, res) => {
       VALUES ($1, $2, $3, $4, $5)
     `, [
       enrollmentRequest.id,
+      1,
       first_approver_id,
       approver.rows[0].full_name,
       approver.rows[0].rank

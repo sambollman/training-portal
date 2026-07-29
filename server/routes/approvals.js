@@ -415,6 +415,30 @@ router.post('/respond/:requestId', requireAuth, async (req, res) => {
       req.params.requestId
     ]);
 
+    // Create a new pending step for the approver who returned it
+    const returnedStep = await db.query(`
+      SELECT * FROM approval_steps 
+      WHERE enrollment_request_id = $1 AND decision = 'returned'
+      ORDER BY decided_at DESC LIMIT 1
+    `, [req.params.requestId]);
+
+    if (returnedStep.rows[0]) {
+      const maxStep = await db.query(
+        'SELECT MAX(step_number) as max FROM approval_steps WHERE enrollment_request_id = $1',
+        [req.params.requestId]
+      );
+      await db.query(`
+        INSERT INTO approval_steps (enrollment_request_id, step_number, approver_id, approver_name, approver_rank)
+        VALUES ($1, $2, $3, $4, $5)
+      `, [
+        req.params.requestId,
+        maxStep.rows[0].max + 1,
+        returnedStep.rows[0].approver_id,
+        returnedStep.rows[0].approver_name,
+        returnedStep.rows[0].approver_rank
+      ]);
+    }
+
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

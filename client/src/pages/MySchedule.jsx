@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react'
 import axios from 'axios'
 
+const pulseStyle = `
+  @keyframes pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.3); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+`
+
 const COLORS = {
   navy: '#0D1B2A', gold: '#C9A84C', bg: '#F0F3F7', white: '#FFFFFF',
   success: '#2D6A4F', successLight: '#D8F3DC',
@@ -266,6 +274,7 @@ export default function MySchedule() {
 
   return (
     <div>
+      <style>{pulseStyle}</style>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: COLORS.navy, margin: 0 }}>My Training Schedule</h1>
         <p style={{ color: COLORS.textLight, fontSize: 13, marginTop: 4 }}>Your upcoming trainings and request statuses.</p>
@@ -298,7 +307,12 @@ export default function MySchedule() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <StatusBadge status={r.status} chainStatus={r.chain_status} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <StatusBadge status={r.status} chainStatus={r.chain_status} />
+                    {r.chain_status === 'returned' && (
+                      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#B5621B', animation: 'pulse 1.5s infinite' }} />
+                    )}
+                  </div>
                   {r.request_type === 'self_requested' && (
                     <button
                       onClick={() => handleExpand(r)}

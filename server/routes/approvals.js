@@ -209,8 +209,8 @@ router.get('/chain/:requestId', requireAuth, async (req, res) => {
 router.post('/act/:stepId', requireAuth, async (req, res) => {
   const { decision, comment, next_approver_id } = req.body
 
-  if (!decision || !['approved', 'denied'].includes(decision)) {
-    return res.status(400).json({ error: 'Decision must be approved or denied' })
+  if (!decision || !['approved', 'denied', 'returned'].includes(decision)) {
+    return res.status(400).json({ error: 'Decision must be approved, denied, or returned' });
   }
 
   try {
@@ -251,6 +251,20 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
       WHERE id = $4
     `, [decision, comment || null, next_approver_id || null, req.params.stepId])
 
+    if (decision === 'returned') {
+      await db.query(`
+        UPDATE enrollment_requests SET chain_status = 'returned'
+        WHERE id = $1
+      `, [step.enrollment_request_id]);
+
+      await db.query(`
+        UPDATE approval_steps SET decision = 'returned', comment = $1, decided_at = NOW()
+        WHERE id = $2
+      `, [comment || null, req.params.stepId]);
+
+      return res.json({ ok: true, is_final: false, returned: true });
+    }
+
     if (isFinalStep) {
       // Complete the chain
       await db.query(`
@@ -286,6 +300,24 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
         UPDATE enrollment_requests SET chain_status = 'in_progress', supervisor_id = $1
         WHERE id = $2
       `, [next_approver_id, step.enrollment_request_id])
+    }
+    // Insert additional approver if requested
+    if (req.body.additional_approver_id) {
+      const addlApprover = await db.query('SELECT * FROM users WHERE id = $1', [req.body.additional_approver_id])
+      const maxStep = await db.query(
+        'SELECT MAX(step_number) as max FROM approval_steps WHERE enrollment_request_id = $1',
+        [step.enrollment_request_id]
+      )
+      await db.query(`
+        INSERT INTO approval_steps (enrollment_request_id, step_number, approver_id, approver_name, approver_rank)
+        VALUES ($1, $2, $3, $4, $5)
+      `, [
+        step.enrollment_request_id,
+        maxStep.rows[0].max + 1,
+        req.body.additional_approver_id,
+        addlApprover.rows[0].full_name,
+        addlApprover.rows[0].rank
+      ])
     }
 
     res.json({ ok: true, is_final: isFinalStep })

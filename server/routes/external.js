@@ -138,8 +138,8 @@ router.get('/my-pending', requireAuth, async (req, res) => {
 router.post('/act/:stepId', requireAuth, async (req, res) => {
   const { decision, comment, next_approver_id } = req.body;
 
-  if (!decision || !['approved', 'denied'].includes(decision)) {
-    return res.status(400).json({ error: 'Decision must be approved or denied' });
+  if (!decision || !['approved', 'denied', 'returned'].includes(decision)) {
+    return res.status(400).json({ error: 'Decision must be approved, denied, or returned' });
   }
 
   try {
@@ -172,6 +172,15 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
       WHERE id = $4
     `, [decision, comment || null, next_approver_id || null, req.params.stepId]);
 
+    // Handle returned decision
+    if (decision === 'returned') {
+      await db.query(`
+        UPDATE external_training_requests SET chain_status = 'returned'
+        WHERE id = $1
+      `, [step.external_request_id]);
+      return res.json({ ok: true, is_final: false, returned: true });
+    }
+
     if (isFinalStep) {
       await db.query(`
         UPDATE external_training_requests SET
@@ -203,6 +212,25 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
       `, [step.external_request_id]);
     }
 
+    // Insert additional approver if requested
+    if (req.body.additional_approver_id) {
+      const addlApprover = await db.query('SELECT * FROM users WHERE id = $1', [req.body.additional_approver_id]);
+      const maxStep = await db.query(
+        'SELECT MAX(step_number) as max FROM approval_steps WHERE external_request_id = $1',
+        [step.external_request_id]
+      );
+      await db.query(`
+        INSERT INTO approval_steps (external_request_id, step_number, approver_id, approver_name, approver_rank)
+        VALUES ($1, $2, $3, $4, $5)
+      `, [
+        step.external_request_id,
+        maxStep.rows[0].max + 1,
+        req.body.additional_approver_id,
+        addlApprover.rows[0].full_name,
+        addlApprover.rows[0].rank
+      ]);
+    }
+    
     res.json({ ok: true, is_final: isFinalStep });
   } catch (err) {
     console.error(err);

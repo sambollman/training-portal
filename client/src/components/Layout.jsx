@@ -14,6 +14,7 @@ export default function Layout({ children }) {
   const navigate = useNavigate()
   const [pendingCount, setPendingCount] = useState(0)
   const isSupervisor = user?.role === 'supervisor' || user?.role === 'coordinator'
+  const [returnedCount, setReturnedCount] = useState(0)
 
   useEffect(() => {
     if (!isSupervisor) return
@@ -31,6 +32,21 @@ export default function Layout({ children }) {
     window.addEventListener('approval-acted', fetchCount)
     return () => window.removeEventListener('approval-acted', fetchCount)
   }, [isSupervisor])
+
+  useEffect(() => {
+    const fetchReturned = () => {
+      axios.get('/api/requests')
+        .then(res => {
+          const count = res.data.requests.filter(r => r.chain_status === 'returned').length
+          setReturnedCount(count)
+        })
+        .catch(() => {})
+    }
+
+    fetchReturned()
+    window.addEventListener('approval-acted', fetchReturned)
+    return () => window.removeEventListener('approval-acted', fetchReturned)
+  }, [])
 
   const handleLogout = async () => {
     await axios.post('/api/auth/dev-logout')
@@ -76,7 +92,12 @@ export default function Layout({ children }) {
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', display: 'flex', borderBottom: isSupervisor ? `1px solid ${COLORS.border}` : 'none' }}>
           <NavLink to="/trainings" style={navStyle}>Available Trainings</NavLink>
           <NavLink to="/calendar" style={navStyle}>Calendar</NavLink>
-          <NavLink to="/my-schedule" style={navStyle}>My Schedule</NavLink>
+          <NavLink to="/my-schedule" style={navStyle}>
+            My Schedule
+            {returnedCount > 0 && (
+              <span style={{ marginLeft: 6, background: '#B5621B', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 10 }}>{returnedCount}</span>
+            )}
+          </NavLink>
           <NavLink to="/transcript" style={navStyle}>Transcript</NavLink>
           <NavLink to="/request-training" style={navStyle}>Request a Training</NavLink>
         </div>

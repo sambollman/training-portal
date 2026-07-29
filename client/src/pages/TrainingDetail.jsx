@@ -274,26 +274,7 @@ export default function TrainingDetail() {
             </div>
           </div>
         )}
-        {enrollments && enrollments.length > 0 && (user.role === 'supervisor' || user.role === 'coordinator') && (
-          <div style={{ marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 12 }}>Currently Enrolled ({enrollments.length})</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {enrollments.map(e => (
-                <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: COLORS.bg, borderRadius: 6 }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textDark }}>{e.full_name}</div>
-                    <div style={{ fontSize: 11, color: COLORS.textLight }}>#{e.badge_number} · {e.unit}</div>
-                  </div>
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase',
-                    background: e.status === 'approved' ? COLORS.successLight : e.status === 'denied' ? COLORS.dangerLight : '#FFF8E1',
-                    color: e.status === 'approved' ? COLORS.success : e.status === 'denied' ? COLORS.danger : '#8A6000',
-                  }}>{e.status}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        
         {user && (
           <div>
             {myRequest ? (
@@ -324,7 +305,26 @@ export default function TrainingDetail() {
           </div>
         )}
       </div>
-
+      {enrollments && enrollments.length > 0 && (user.role === 'supervisor' || user.role === 'coordinator') && (
+          <div style={{ marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 12 }}>Currently Enrolled ({enrollments.length})</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {enrollments.map(e => (
+                <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: COLORS.bg, borderRadius: 6 }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textDark }}>{e.full_name}</div>
+                    <div style={{ fontSize: 11, color: COLORS.textLight }}>#{e.badge_number} · {e.unit}</div>
+                  </div>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase',
+                    background: e.status === 'approved' ? COLORS.successLight : e.status === 'denied' ? COLORS.dangerLight : '#FFF8E1',
+                    color: e.status === 'approved' ? COLORS.success : e.status === 'denied' ? COLORS.danger : '#8A6000',
+                  }}>{e.status}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       {toast && (
         <div style={{ position: 'fixed', bottom: 28, right: 28, background: toast.type === 'error' ? COLORS.dangerLight : COLORS.navy, color: toast.type === 'error' ? COLORS.danger : COLORS.white, padding: '14px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', maxWidth: 380, zIndex: 200, borderLeft: `4px solid ${toast.type === 'error' ? COLORS.danger : COLORS.gold}` }}>
           {toast.msg}

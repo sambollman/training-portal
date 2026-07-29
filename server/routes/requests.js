@@ -7,7 +7,9 @@ const { requireAuth, requireRole } = require('../middleware/auth');
 router.get('/', requireAuth, async (req, res) => {
   try {
     const result = await db.query(`
-      SELECT er.*, t.title, to_char(t.session_date, 'YYYY-MM-DD') as session_date, to_char(t.end_date, 'YYYY-MM-DD') as end_date, t.location, t.category, t.start_time
+      SELECT er.*, t.title, to_char(t.session_date, 'YYYY-MM-DD') as session_date, to_char(t.end_date, 'YYYY-MM-DD') as end_date, t.location, t.category, t.start_time,
+      (SELECT comment FROM approval_steps WHERE enrollment_request_id = er.id AND decision = 'returned' ORDER BY decided_at DESC LIMIT 1) as return_comment,
+      (SELECT approver_name FROM approval_steps WHERE enrollment_request_id = er.id AND decision = 'returned' ORDER BY decided_at DESC LIMIT 1) as returned_by
       FROM enrollment_requests er
       JOIN trainings t ON er.training_id = t.id
       WHERE er.officer_id = $1

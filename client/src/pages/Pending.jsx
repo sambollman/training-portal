@@ -206,6 +206,12 @@ export default function Pending() {
                   <div style={{ fontSize: 14, color: COLORS.textMid, lineHeight: 1.6, background: COLORS.bg, padding: '12px 14px', borderRadius: 6 }}>{selected.reason}</div>
                 </div>
               )}
+              {selected.officer_response && (
+                <div style={{ padding: '0 22px 18px' }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Officer's Response</div>
+                  <div style={{ fontSize: 14, color: COLORS.textMid, lineHeight: 1.6, background: '#FFF0E0', padding: '12px 14px', borderRadius: 6, border: '1px solid #C9A84C' }}>{selected.officer_response}</div>
+                </div>
+              )}
               {(selected.training_cost || selected.travel_cost || selected.hotel_cost || selected.per_diem) && (
                 <div style={{ padding: '0 22px 18px' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Estimated Costs</div>

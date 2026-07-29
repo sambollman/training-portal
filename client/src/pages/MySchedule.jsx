@@ -10,6 +10,9 @@ const COLORS = {
 }
 
 function StatusBadge({ status, chainStatus }) {
+  if (chainStatus === 'returned') {
+    return <span style={{ background: '#FFF0E0', color: '#B5621B', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase' }}>More Info Needed</span>
+  }
   if (chainStatus === 'in_progress') {
     return <span style={{ background: '#FFF8E1', color: '#8A6000', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase' }}>In Review</span>
   }
@@ -73,12 +76,76 @@ function ChainTimeline({ steps }) {
   )
 }
 
+function ReturnedResponseForm({ request, onSubmit }) {
+  const [form, setForm] = useState({
+    reason: request.reason || '',
+    officer_response: '',
+    training_cost: request.training_cost || '',
+    travel_cost: request.travel_cost || '',
+    hotel_cost: request.hotel_cost || '',
+    per_diem: request.per_diem || '',
+  })
+  const [submitting, setSubmitting] = useState(false)
+
+  const inputStyle = {
+    width: '100%', padding: '8px 12px', borderRadius: 6,
+    border: `1px solid #D1D9E6`, fontSize: 13,
+    color: '#0D1B2A', background: '#FFFFFF', boxSizing: 'border-box',
+  }
+
+  const handleSubmit = async () => {
+    setSubmitting(true)
+    await onSubmit(request, form)
+    setSubmitting(false)
+  }
+
+  return (
+    <div style={{ padding: '16px 22px', borderTop: '1px solid #D1D9E6', background: '#FFF0E0' }}>
+      <div style={{ fontSize: 13, fontWeight: 700, color: '#B5621B', marginBottom: 12 }}>⚠️ More information has been requested — please provide additional details and resubmit.</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6B7F96', marginBottom: 4, textTransform: 'uppercase' }}>Your Response</label>
+          <textarea
+            value={form.officer_response}
+            onChange={e => setForm(p => ({ ...p, officer_response: e.target.value }))}
+            placeholder="Address the approver's concerns..."
+            style={{ ...inputStyle, height: 80, resize: 'vertical' }}
+          />
+        </div>
+        <div style={{ gridColumn: '1 / -1' }}>
+          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6B7F96', marginBottom: 4, textTransform: 'uppercase' }}>Updated Reason</label>
+          <textarea
+            value={form.reason}
+            onChange={e => setForm(p => ({ ...p, reason: e.target.value }))}
+            style={{ ...inputStyle, height: 60, resize: 'vertical' }}
+          />
+        </div>
+        {[
+          { label: 'Training Cost ($)', key: 'training_cost' },
+          { label: 'Travel Cost ($)', key: 'travel_cost' },
+          { label: 'Hotel Cost ($)', key: 'hotel_cost' },
+          { label: 'Per Diem ($)', key: 'per_diem' },
+        ].map(({ label, key }) => (
+          <div key={key}>
+            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6B7F96', marginBottom: 4, textTransform: 'uppercase' }}>{label}</label>
+            <input type="number" step="0.01" style={inputStyle} value={form[key]} onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))} placeholder="0.00" />
+          </div>
+        ))}
+      </div>
+      <button onClick={handleSubmit} disabled={submitting} style={{ padding: '9px 20px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: submitting ? 'default' : 'pointer', border: 'none', background: '#0D1B2A', color: '#FFFFFF' }}>
+        {submitting ? 'Submitting...' : 'Resubmit Request'}
+      </button>
+    </div>
+  )
+}
+
 export default function MySchedule() {
   const [requests, setRequests] = useState([])
   const [chains, setChains] = useState({})
   const [loading, setLoading] = useState(true)
   const [expanded, setExpanded] = useState(null)
   const [loadingChain, setLoadingChain] = useState(null)
+  const [toast, setToast] = useState(null)
 
   useEffect(() => {
     Promise.all([
@@ -131,6 +198,33 @@ export default function MySchedule() {
     }
   }
 
+  const showToast = (msg, type = 'success') => {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 3500)
+  }
+
+  const handleRespond = async (request, responseData) => {
+  try {
+    const endpoint = request.source === 'external'
+      ? `/api/external/respond/${request.id}`
+      : `/api/approvals/respond/${request.id}`
+    await axios.post(endpoint, responseData)
+    const [rr, er] = await Promise.all([
+      axios.get('/api/requests'),
+      axios.get('/api/external/my-requests'),
+    ])
+    const portalRequests = rr.data.requests.map(r => ({ ...r, source: 'portal' }))
+    const externalRequests = er.data.requests.map(r => ({
+      ...r, source: 'external', title: r.training_name,
+      session_date: r.start_date, location: r.location, request_type: 'self_requested',
+    }))
+    setRequests([...portalRequests, ...externalRequests].sort((a, b) => new Date(a.session_date) - new Date(b.session_date)))
+    showToast('Response submitted successfully.')
+  } catch (err) {
+    showToast(err.response?.data?.error || 'Failed to submit response', 'error')
+  }
+}
+
   if (loading) return <div style={{ padding: 40, color: COLORS.textLight }}>Loading...</div>
 
   return (
@@ -181,19 +275,28 @@ export default function MySchedule() {
                   )}
                 </div>
               </div>
-              {expanded === r.id && (
-                <div style={{ padding: '0 22px 18px' }}>
-                  {loadingChain === r.id ? (
-                    <div style={{ fontSize: 13, color: COLORS.textLight }}>Loading chain...</div>
-                  ) : (
-                    <ChainTimeline steps={chains[r.id]} />
-                  )}
-                </div>
-              )}
+              {
+    {r.chain_status === 'returned' && (
+      <ReturnedResponseForm request={r} onSubmit={handleRespond} />
+    )}
+    {expanded === r.id && (
+      <div style={{ padding: '0 22px 18px' }}>
+        {loadingChain === r.id ? (
+          <div style={{ fontSize: 13, color: COLORS.textLight }}>Loading chain...</div>
+        ) : (
+          <ChainTimeline steps={chains[r.id]} />
+        )}
+      </div>
+    )}
             </div>
           ))}
         </div>
       )}
+      {toast && (
+        <div style={{ position: 'fixed', bottom: 28, right: 28, background: toast.type === 'error' ? '#FDECEA' : '#0D1B2A', color: toast.type === 'error' ? '#9B2335' : '#FFFFFF', padding: '14px 20px', borderRadius: 8, fontSize: 13, fontWeight: 600, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', maxWidth: 380, zIndex: 200, borderLeft: `4px solid ${toast.type === 'error' ? '#9B2335' : '#C9A84C'}` }}>
+          {toast.msg}
+  </div>
+)}
     </div>
   )
 }

@@ -220,16 +220,15 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
         [step.external_request_id]
       );
       await db.query(`
-        INSERT INTO approval_steps (external_request_id, step_number, approver_id, approver_name, approver_rank)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO approval_steps (enrollment_request_id, step_number, approver_id, approver_name, approver_rank, is_additional)
+        VALUES ($1, $2, $3, $4, $5, true)
       `, [
-        step.external_request_id,
+        step.enrollment_request_id,
         maxStep.rows[0].max + 1,
         req.body.additional_approver_id,
         addlApprover.rows[0].full_name,
         addlApprover.rows[0].rank
       ]);
-    }
     
     res.json({ ok: true, is_final: isFinalStep });
   } catch (err) {

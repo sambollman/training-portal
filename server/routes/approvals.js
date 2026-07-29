@@ -111,9 +111,8 @@ router.post('/submit', requireAuth, async (req, res) => {
 
     // Create first approval step
     await db.query(`
-      INSERT INTO approval_steps 
-        (enrollment_request_id, step_number, approver_id, approver_name, approver_rank)
-      VALUES ($1, 1, $2, $3, $4)
+      INSERT INTO approval_steps (enrollment_request_id, step_number, approver_id, approver_name, approver_rank)
+      VALUES ($1, $2, $3, $4, $5)
     `, [
       enrollmentRequest.id,
       first_approver_id,

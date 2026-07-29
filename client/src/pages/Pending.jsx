@@ -311,6 +311,12 @@ export default function Pending() {
                 </div>
               )}
 
+              {selected.is_additional && decision && decision !== 'returned' && (
+                <div style={{ marginBottom: 16, padding: '10px 14px', background: COLORS.bg, borderRadius: 6, fontSize: 13, color: COLORS.textMid }}>
+                  You were added as a consultative approver — your decision will be recorded and the chain will continue automatically.
+                </div>
+              )}
+
               {decision && decision !== 'returned' && isFinal && (
                 <div style={{ marginBottom: 16, padding: '10px 14px', background: COLORS.bg, borderRadius: 6, fontSize: 13, color: COLORS.textMid }}>
                   This is the final step — the officer will be notified of the outcome.

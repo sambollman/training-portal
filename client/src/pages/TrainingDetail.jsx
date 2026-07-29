@@ -152,6 +152,7 @@ export default function TrainingDetail() {
   const [training, setTraining] = useState(null)
   const [files, setFiles] = useState([])
   const [myRequest, setMyRequest] = useState(null)
+  const [enrollments, setEnrollments] = useState([])
   const [loading, setLoading] = useState(true)
   const [requesting, setRequesting] = useState(false)
   const [toast, setToast] = useState(null)
@@ -165,6 +166,7 @@ export default function TrainingDetail() {
     ]).then(([tr, fr, rr]) => {
       setTraining(tr.data.training)
       setFiles(fr.data.files)
+      setEnrollments(tr.data.enrollments || [])
       const existing = rr.data.requests.find(r => r.training_id === id)
       setMyRequest(existing || null)
     }).finally(() => setLoading(false))
@@ -268,6 +270,26 @@ export default function TrainingDetail() {
                   </div>
                   <span style={{ marginLeft: 'auto', fontSize: 12, color: COLORS.gold, fontWeight: 700 }}>Download</span>
                 </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {enrollments && enrollments.length > 0 && (user.role === 'supervisor' || user.role === 'coordinator') && (
+          <div style={{ marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 12 }}>Currently Enrolled ({enrollments.length})</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {enrollments.map(e => (
+                <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: COLORS.bg, borderRadius: 6 }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textDark }}>{e.full_name}</div>
+                    <div style={{ fontSize: 11, color: COLORS.textLight }}>#{e.badge_number} · {e.unit}</div>
+                  </div>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase',
+                    background: e.status === 'approved' ? COLORS.successLight : e.status === 'denied' ? COLORS.dangerLight : '#FFF8E1',
+                    color: e.status === 'approved' ? COLORS.success : e.status === 'denied' ? COLORS.danger : '#8A6000',
+                  }}>{e.status}</span>
+                </div>
               ))}
             </div>
           </div>

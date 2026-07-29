@@ -154,7 +154,8 @@ router.get('/my-pending', requireAuth, async (req, res) => {
         u.full_name as officer_name,
         u.rank as officer_rank,
         u.badge_number as officer_badge,
-        u.unit as officer_unit
+        u.unit as officer_unit,
+        ap.is_additional
       FROM approval_steps ap
       JOIN enrollment_requests er ON ap.enrollment_request_id = er.id
       JOIN trainings t ON er.training_id = t.id

@@ -138,6 +138,7 @@ router.get('/my-pending', requireAuth, async (req, res) => {
       SELECT 
         ap.*,
         er.reason,
+        er.officer_response,
         er.training_id,
         er.officer_id,
         er.chain_status,

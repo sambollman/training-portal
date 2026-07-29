@@ -87,39 +87,60 @@ function ReturnedResponseForm({ request, onSubmit }) {
   })
   const [submitting, setSubmitting] = useState(false)
 
+  const set = (field, value) => setForm(p => ({ ...p, [field]: value }))
+
   const inputStyle = {
     width: '100%', padding: '8px 12px', borderRadius: 6,
-    border: `1px solid #D1D9E6`, fontSize: 13,
+    border: '1px solid #D1D9E6', fontSize: 13,
     color: '#0D1B2A', background: '#FFFFFF', boxSizing: 'border-box',
   }
 
-  const handleSubmit = async () => {
-    setSubmitting(true)
-    await onSubmit(request, form)
-    setSubmitting(false)
+  const labelStyle = {
+    display: 'block', fontSize: 11, fontWeight: 700,
+    color: '#6B7F96', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em'
   }
 
+  const totalCost = (
+    parseFloat(form.training_cost || 0) +
+    parseFloat(form.travel_cost || 0) +
+    parseFloat(form.hotel_cost || 0) +
+    parseFloat(form.per_diem || 0)
+  ).toFixed(2)
+
   return (
-    <div style={{ padding: '16px 22px', borderTop: '1px solid #D1D9E6', background: '#FFF0E0' }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: '#B5621B', marginBottom: 12 }}>⚠️ More information has been requested — please provide additional details and resubmit.</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-        <div style={{ gridColumn: '1 / -1' }}>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6B7F96', marginBottom: 4, textTransform: 'uppercase' }}>Your Response</label>
+    <div style={{ padding: '16px 22px', borderTop: '1px solid #D1D9E6', background: '#FFF8F0' }}>
+      {request.return_comment && (
+        <div style={{ background: '#FFFFFF', border: '1px solid #C9A84C', borderRadius: 6, padding: '12px 16px', marginBottom: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#B5621B', marginBottom: 4, textTransform: 'uppercase' }}>{request.returned_by || 'Approver'} is requesting more information:</div>
+          <div style={{ fontSize: 13, color: '#3D5166' }}>{request.return_comment}</div>
+        </div>
+      )}
+      {!request.return_comment && (
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#B5621B', marginBottom: 16 }}>⚠️ Your request has been returned — please review and resubmit.</div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginBottom: 12 }}>
+        <div>
+          <label style={labelStyle}>Your Response to Approver</label>
           <textarea
             value={form.officer_response}
-            onChange={e => setForm(p => ({ ...p, officer_response: e.target.value }))}
+            onChange={e => set('officer_response', e.target.value)}
             placeholder="Address the approver's concerns..."
-            style={{ ...inputStyle, height: 80, resize: 'vertical' }}
+            style={{ ...inputStyle, height: 70, resize: 'vertical' }}
           />
         </div>
-        <div style={{ gridColumn: '1 / -1' }}>
-          <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6B7F96', marginBottom: 4, textTransform: 'uppercase' }}>Updated Reason</label>
+        <div>
+          <label style={labelStyle}>Reason for Attending</label>
           <textarea
             value={form.reason}
-            onChange={e => setForm(p => ({ ...p, reason: e.target.value }))}
-            style={{ ...inputStyle, height: 60, resize: 'vertical' }}
+            onChange={e => set('reason', e.target.value)}
+            style={{ ...inputStyle, height: 70, resize: 'vertical' }}
           />
         </div>
+      </div>
+
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7F96', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Estimated Costs</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
         {[
           { label: 'Training Cost ($)', key: 'training_cost' },
           { label: 'Travel Cost ($)', key: 'travel_cost' },
@@ -127,12 +148,28 @@ function ReturnedResponseForm({ request, onSubmit }) {
           { label: 'Per Diem ($)', key: 'per_diem' },
         ].map(({ label, key }) => (
           <div key={key}>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#6B7F96', marginBottom: 4, textTransform: 'uppercase' }}>{label}</label>
-            <input type="number" step="0.01" style={inputStyle} value={form[key]} onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))} placeholder="0.00" />
+            <label style={labelStyle}>{label}</label>
+            <input
+              type="number" step="0.01" min="0"
+              style={inputStyle}
+              value={form[key]}
+              onChange={e => set(key, e.target.value)}
+              placeholder="0.00"
+            />
           </div>
         ))}
       </div>
-      <button onClick={handleSubmit} disabled={submitting} style={{ padding: '9px 20px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: submitting ? 'default' : 'pointer', border: 'none', background: '#0D1B2A', color: '#FFFFFF' }}>
+      {parseFloat(totalCost) > 0 && (
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#0D1B2A', marginBottom: 12 }}>
+          Total Estimated: ${totalCost}
+        </div>
+      )}
+
+      <button
+        onClick={async () => { setSubmitting(true); await onSubmit(request, form); setSubmitting(false) }}
+        disabled={submitting}
+        style={{ padding: '9px 20px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: submitting ? 'default' : 'pointer', border: 'none', background: '#0D1B2A', color: '#FFFFFF' }}
+      >
         {submitting ? 'Submitting...' : 'Resubmit Request'}
       </button>
     </div>

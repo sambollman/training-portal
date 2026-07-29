@@ -375,4 +375,51 @@ router.get('/history/:requestId', requireAuth, async (req, res) => {
   }
 })
 
+// POST /api/approvals/respond/:requestId - officer responds to a returned request
+router.post('/respond/:requestId', requireAuth, async (req, res) => {
+  const { officer_response, reason, training_cost, travel_cost, hotel_cost, per_diem } = req.body;
+
+  try {
+    // Verify this is the officer's request
+    const request = await db.query(
+      'SELECT * FROM enrollment_requests WHERE id = $1 AND officer_id = $2',
+      [req.params.requestId, req.user.id]
+    );
+
+    if (!request.rows[0]) {
+      return res.status(404).json({ error: 'Request not found' });
+    }
+
+    if (request.rows[0].chain_status !== 'returned') {
+      return res.status(400).json({ error: 'This request has not been returned for more information' });
+    }
+
+    // Update the request with the officer's response
+    await db.query(`
+      UPDATE enrollment_requests SET
+        officer_response = $1,
+        reason = $2,
+        training_cost = $3,
+        travel_cost = $4,
+        hotel_cost = $5,
+        per_diem = $6,
+        chain_status = 'in_progress'
+      WHERE id = $7
+    `, [
+      officer_response || null,
+      reason || request.rows[0].reason,
+      training_cost || request.rows[0].training_cost,
+      travel_cost || request.rows[0].travel_cost,
+      hotel_cost || request.rows[0].hotel_cost,
+      per_diem || request.rows[0].per_diem,
+      req.params.requestId
+    ]);
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to submit response' });
+  }
+});
+
 module.exports = router

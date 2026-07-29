@@ -91,7 +91,7 @@ export default function Pending() {
 
   const handleSubmit = async () => {
     if (!decision) { showToast('Please select a decision', 'error'); return }
-    if (decision !== 'returned' && nextApprovers.length > 0 && !selectedNextApprover) {
+    if (decision !== 'returned' && nextApprovers.length > 0 && !selectedNextApprover && !selected.is_additional) {
       showToast('Please select who to forward this to', 'error'); return
     }
     setSubmitting(true)
@@ -287,7 +287,7 @@ export default function Pending() {
                 <button onClick={() => handleDecisionChange('returned')} style={{ flex: 1, padding: '10px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: `2px solid ${decision === 'returned' ? COLORS.warning : COLORS.border}`, background: decision === 'returned' ? COLORS.warningLight : COLORS.white, color: decision === 'returned' ? COLORS.warning : COLORS.textMid }}>Request More Info</button>
               </div>
 
-              {decision && decision !== 'returned' && !isFinal && (
+              {decision && decision !== 'returned' && !isFinal && !selected.is_additional && (
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
                     Forward to <span style={{ color: COLORS.danger }}>*</span>

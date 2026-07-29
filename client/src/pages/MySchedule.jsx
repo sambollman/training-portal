@@ -310,7 +310,7 @@ export default function MySchedule() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <StatusBadge status={r.status} chainStatus={r.chain_status} />
                     {r.chain_status === 'returned' && (
-                      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#B5621B', animation: 'pulse 1.5s infinite' }} />
+                      <span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: '50%', background: '#B5621B', flexShrink: 0 }} />
                     )}
                   </div>
                   {r.request_type === 'self_requested' && (

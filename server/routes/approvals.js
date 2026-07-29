@@ -319,7 +319,7 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
         addlApprover.rows[0].full_name,
         addlApprover.rows[0].rank
       ]);
-
+    }
     res.json({ ok: true, is_final: isFinalStep })
   } catch (err) {
     console.error(err)

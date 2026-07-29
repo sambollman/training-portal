@@ -117,7 +117,8 @@ router.get('/my-pending', requireAuth, async (req, res) => {
         u.full_name as officer_name,
         u.rank as officer_rank,
         u.badge_number as officer_badge,
-        u.unit as officer_unit
+        u.unit as officer_unit,
+        ap.is_additional
       FROM approval_steps ap
       JOIN external_training_requests etr ON ap.external_request_id = etr.id
       JOIN users u ON etr.officer_id = u.id

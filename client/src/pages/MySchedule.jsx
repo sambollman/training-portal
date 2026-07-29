@@ -275,7 +275,7 @@ export default function MySchedule() {
                   )}
                 </div>
               </div>
-              {
+              
     {r.chain_status === 'returned' && (
       <ReturnedResponseForm request={r} onSubmit={handleRespond} />
     )}

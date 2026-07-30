@@ -326,4 +326,20 @@ router.post('/respond/:requestId', requireAuth, async (req, res) => {
   }
 });
 
+router.delete('/:id', requireAuth, async (req, res) => {
+  try {
+    const result = await db.query(
+      'DELETE FROM external_training_requests WHERE id = $1 AND officer_id = $2 AND chain_status != \'complete\' RETURNING *',
+      [req.params.id, req.user.id]
+    );
+    if (!result.rows[0]) {
+      return res.status(400).json({ error: 'Cannot withdraw this request' });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to withdraw request' });
+  }
+});
+
 module.exports = router;

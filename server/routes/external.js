@@ -368,4 +368,43 @@ router.delete('/:id', requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/external/all - all external requests (supervisor/coordinator)
+router.get('/all', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
+  try {
+    let query, params;
+
+    if (req.user.role === 'coordinator') {
+      query = `
+        SELECT etr.*,
+          to_char(etr.start_date, 'YYYY-MM-DD') as start_date,
+          to_char(etr.end_date, 'YYYY-MM-DD') as end_date,
+          u.full_name as officer_name, u.badge_number, u.unit
+        FROM external_training_requests etr
+        JOIN users u ON etr.officer_id = u.id
+        ORDER BY etr.created_at DESC
+      `;
+      params = [];
+    } else {
+      query = `
+        SELECT DISTINCT etr.*,
+          to_char(etr.start_date, 'YYYY-MM-DD') as start_date,
+          to_char(etr.end_date, 'YYYY-MM-DD') as end_date,
+          u.full_name as officer_name, u.badge_number, u.unit
+        FROM external_training_requests etr
+        JOIN users u ON etr.officer_id = u.id
+        LEFT JOIN approval_steps ap ON ap.external_request_id = etr.id
+        WHERE ap.approver_id = $1
+        ORDER BY etr.created_at DESC
+      `;
+      params = [req.user.id];
+    }
+
+    const result = await db.query(query, params);
+    res.json({ requests: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch external requests' });
+  }
+});
+
 module.exports = router;

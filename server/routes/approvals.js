@@ -244,6 +244,7 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
 
     // Determine if this is the final step
     const currentRank = req.user.rank?.toLowerCase()
+    const currentRole = req.user.role?.toLowerCase()
     const isOutOfState = training.is_out_of_state
     const isExternal = training.training_type === 'external'
     const isInternal = training.training_type === 'internal'

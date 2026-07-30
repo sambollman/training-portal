@@ -42,18 +42,37 @@ router.get('/pending', requireAuth, requireRole('supervisor', 'coordinator'), as
   }
 });
 
-// GET /api/requests/all - supervisor sees full history for their unit
 router.get('/all', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
   try {
-    const result = await db.query(`
-      SELECT er.*, t.title, to_char(t.session_date, 'YYYY-MM-DD') as session_date, to_char(t.end_date, 'YYYY-MM-DD') as end_date, t.location, t.category,
-             u.full_name, u.badge_number, u.unit
-      FROM enrollment_requests er
-      JOIN trainings t ON er.training_id = t.id
-      JOIN users u ON er.officer_id = u.id
-      WHERE er.supervisor_id = $1
-      ORDER BY er.created_at DESC
-    `, [req.user.id]);
+    let query, params;
+
+    if (req.user.role === 'coordinator') {
+      query = `
+        SELECT er.*, t.title, to_char(t.session_date, 'YYYY-MM-DD') as session_date, 
+          to_char(t.end_date, 'YYYY-MM-DD') as end_date, t.location, t.category,
+          u.full_name, u.badge_number, u.unit
+        FROM enrollment_requests er
+        JOIN trainings t ON er.training_id = t.id
+        JOIN users u ON er.officer_id = u.id
+        ORDER BY er.created_at DESC
+      `;
+      params = [];
+    } else {
+      query = `
+        SELECT DISTINCT er.*, t.title, to_char(t.session_date, 'YYYY-MM-DD') as session_date, 
+          to_char(t.end_date, 'YYYY-MM-DD') as end_date, t.location, t.category,
+          u.full_name, u.badge_number, u.unit
+        FROM enrollment_requests er
+        JOIN trainings t ON er.training_id = t.id
+        JOIN users u ON er.officer_id = u.id
+        LEFT JOIN approval_steps ap ON ap.enrollment_request_id = er.id
+        WHERE er.supervisor_id = $1 OR ap.approver_id = $1
+        ORDER BY er.created_at DESC
+      `;
+      params = [req.user.id];
+    }
+
+    const result = await db.query(query, params);
     res.json({ requests: result.rows });
   } catch (err) {
     console.error(err);

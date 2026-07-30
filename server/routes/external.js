@@ -165,7 +165,7 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
       'SELECT * FROM external_training_requests WHERE id = $1',
       [step.external_request_id]
     );
-
+    const externalRequest = requestResult.rows[0];
     const currentRank = req.user.rank?.toLowerCase()
     const isOutOfState = externalRequest.is_out_of_state
     const isFinalStep = currentRank === 'coordinator'

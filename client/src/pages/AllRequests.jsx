@@ -32,9 +32,21 @@ export default function AllRequests() {
   const [filter, setFilter] = useState('all')
 
   useEffect(() => {
-    axios.get('/api/requests/all')
-      .then(res => setRequests(res.data.requests))
-      .finally(() => setLoading(false))
+    Promise.all([
+      axios.get('/api/requests/all'),
+      axios.get('/api/external/all'),
+    ]).then(([pr, er]) => {
+      const portal = pr.data.requests.map(r => ({ ...r, source: 'portal' }))
+      const external = er.data.requests.map(r => ({
+        ...r,
+        source: 'external',
+        title: r.training_name,
+        session_date: r.start_date,
+        full_name: r.officer_name,
+        request_type: 'self_requested',
+      }))
+      setRequests([...portal, ...external].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)))
+    }).finally(() => setLoading(false))
   }, [])
 
   const filtered = filter === 'all' ? requests : requests.filter(r => r.status === filter)

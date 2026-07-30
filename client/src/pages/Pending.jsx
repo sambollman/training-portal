@@ -184,6 +184,7 @@ export default function Pending() {
                 <div style={{ color: COLORS.white, fontWeight: 700, fontSize: 16 }}>{selected.display_title}</div>
                 <div style={{ color: '#8A9BB0', fontSize: 12, marginTop: 3 }}>
                   {(selected.session_date || selected.start_date) ? new Date((selected.session_date || selected.start_date) + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
+                  {selected.end_date ? ` – ${new Date(selected.end_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}
                   {selected.location ? ` · ${selected.location}` : ''}
                   {selected.is_out_of_state ? ' · OUT OF STATE' : ''}
                 </div>

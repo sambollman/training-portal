@@ -59,7 +59,7 @@ function RecordRow({ record, onUpdate, onUpload, onDeleteCert, canEdit }) {
     setUploading(false)
   }
 
-  const sourceLabel = record.source === 'portal' ? 'Portal' : record.source === 'external' ? 'External' : 'Manual'
+  const sourceLabel = record.source === 'portal' ? 'Internal' : record.source === 'external' ? 'External' : record.source === 'import' ? 'Imported' : 'Manual'
   const sourceBg = record.source === 'portal' ? '#E0ECF8' : record.source === 'external' ? '#FFF0E0' : COLORS.bg
   const sourceColor = record.source === 'portal' ? '#1A5A8A' : record.source === 'external' ? '#B5621B' : COLORS.textMid
 

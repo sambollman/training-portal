@@ -70,9 +70,12 @@ export default function Pending() {
 
     const rank = selected?.approver_rank?.toLowerCase()
     const isOutOfState = selected?.is_out_of_state
-    const isFinal =
-      (rank === 'captain' && !isOutOfState) ||
-      rank === 'assistant chief'
+    const isInternal = selected?.training_type === 'internal'
+    const isFinal = selected && (
+      isInternal
+        ? rank === 'lieutenant'
+        : rank === 'coordinator'
+    )
 
     if (d !== 'returned' && !isFinal) {
       setLoadingNext(true)

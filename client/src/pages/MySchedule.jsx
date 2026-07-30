@@ -233,10 +233,13 @@ export default function MySchedule() {
   }
 }
 
-  const handleWithdraw = async (requestId) => {
+  const handleWithdraw = async (request) => {
     if (!confirm('Withdraw this request?')) return
     try {
-      await axios.delete(`/api/requests/${requestId}`)
+      const endpoint = request.source === 'external'
+        ? `/api/external/${request.id}`
+        : `/api/requests/${request.id}`
+    await axios.delete(endpoint)
       setRequests(prev => prev.filter(r => r.id !== requestId))
     } catch (err) {
       alert(err.response?.data?.error || 'Could not withdraw request')
@@ -322,7 +325,7 @@ export default function MySchedule() {
                     </button>
                   )}
                   {(r.status === 'pending' || r.status === 'approved' || r.status === 'enrolled') && r.request_type === 'self_requested' && (
-                    <button onClick={() => handleWithdraw(r.id)} style={{ padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${COLORS.border}`, background: COLORS.white, color: COLORS.textLight }}>Withdraw</button>
+                    <button onClick={() => handleWithdraw(r)} style={{ padding: '6px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${COLORS.border}`, background: COLORS.white, color: COLORS.textLight }}>Withdraw</button>
                   )}
                 </div>
               </div>

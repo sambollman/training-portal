@@ -71,12 +71,12 @@ export default function Pending() {
     const rank = selected?.approver_rank?.toLowerCase()
     const isOutOfState = selected?.is_out_of_state
     const isInternal = selected?.training_type === 'internal'
-    console.log('training_type:', selected?.training_type, 'isInternal:', isInternal, 'isFinal:', isFinal)
     const isFinal = selected && (
       isInternal
         ? rank === 'lieutenant'
         : rank === 'coordinator'
     )
+    console.log('training_type:', selected?.training_type, 'isInternal:', isInternal, 'isFinal:', isFinal)
 
     if (isFinal) {
       setNextApprovers([])

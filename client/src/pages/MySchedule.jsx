@@ -267,6 +267,7 @@ export default function MySchedule() {
     }))
     setRequests([...portalRequests, ...externalRequests].sort((a, b) => new Date(a.session_date) - new Date(b.session_date)))
     showToast('Response submitted successfully.')
+    window.dispatchEvent(new Event('approval-acted'))
   } catch (err) {
     showToast(err.response?.data?.error || 'Failed to submit response', 'error')
   }

@@ -85,13 +85,24 @@ function ChainTimeline({ steps }) {
 }
 
 function ReturnedResponseForm({ request, onSubmit }) {
+  const isExternal = request.source === 'external'
   const [form, setForm] = useState({
-    reason: request.reason || '',
     officer_response: '',
+    reason: request.reason || '',
     training_cost: request.training_cost || '',
     travel_cost: request.travel_cost || '',
     hotel_cost: request.hotel_cost || '',
     per_diem: request.per_diem || '',
+    // External only fields
+    training_name: request.training_name || request.title || '',
+    organization: request.organization || '',
+    location: request.location || '',
+    is_out_of_state: request.is_out_of_state || false,
+    start_date: request.start_date || request.session_date || '',
+    end_date: request.end_date || '',
+    duration_hours: request.duration_hours || '',
+    website: request.website || '',
+    description: request.description || '',
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -130,20 +141,57 @@ function ReturnedResponseForm({ request, onSubmit }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginBottom: 12 }}>
         <div>
           <label style={labelStyle}>Your Response to Approver</label>
-          <textarea
-            value={form.officer_response}
-            onChange={e => set('officer_response', e.target.value)}
-            placeholder="Address the approver's concerns..."
-            style={{ ...inputStyle, height: 70, resize: 'vertical' }}
-          />
+          <textarea value={form.officer_response} onChange={e => set('officer_response', e.target.value)} placeholder="Address the approver's concerns..." style={{ ...inputStyle, height: 70, resize: 'vertical' }} />
         </div>
+
+        {isExternal && (
+          <>
+            <div>
+              <label style={labelStyle}>Training Name *</label>
+              <input style={inputStyle} value={form.training_name} onChange={e => set('training_name', e.target.value)} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={labelStyle}>Organization / Provider</label>
+                <input style={inputStyle} value={form.organization} onChange={e => set('organization', e.target.value)} />
+              </div>
+              <div>
+                <label style={labelStyle}>Website</label>
+                <input style={inputStyle} value={form.website} onChange={e => set('website', e.target.value)} />
+              </div>
+              <div>
+                <label style={labelStyle}>Location</label>
+                <input style={inputStyle} value={form.location} onChange={e => set('location', e.target.value)} />
+              </div>
+              <div>
+                <label style={labelStyle}>Duration (hours)</label>
+                <input type="number" step="0.5" style={inputStyle} value={form.duration_hours} onChange={e => set('duration_hours', e.target.value)} />
+              </div>
+              <div>
+                <label style={labelStyle}>Start Date</label>
+                <input type="date" style={inputStyle} value={form.start_date} onChange={e => set('start_date', e.target.value)} />
+              </div>
+              <div>
+                <label style={labelStyle}>End Date</label>
+                <input type="date" style={inputStyle} value={form.end_date} onChange={e => set('end_date', e.target.value)} />
+              </div>
+            </div>
+            <div>
+              <label style={labelStyle}>Description</label>
+              <textarea value={form.description} onChange={e => set('description', e.target.value)} style={{ ...inputStyle, height: 60, resize: 'vertical' }} />
+            </div>
+            <div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#3D5166', cursor: 'pointer' }}>
+                <input type="checkbox" checked={form.is_out_of_state} onChange={e => set('is_out_of_state', e.target.checked)} />
+                Out of state training
+              </label>
+            </div>
+          </>
+        )}
+
         <div>
           <label style={labelStyle}>Reason for Attending</label>
-          <textarea
-            value={form.reason}
-            onChange={e => set('reason', e.target.value)}
-            style={{ ...inputStyle, height: 70, resize: 'vertical' }}
-          />
+          <textarea value={form.reason} onChange={e => set('reason', e.target.value)} style={{ ...inputStyle, height: 70, resize: 'vertical' }} />
         </div>
       </div>
 
@@ -157,20 +205,12 @@ function ReturnedResponseForm({ request, onSubmit }) {
         ].map(({ label, key }) => (
           <div key={key}>
             <label style={labelStyle}>{label}</label>
-            <input
-              type="number" step="0.01" min="0"
-              style={inputStyle}
-              value={form[key]}
-              onChange={e => set(key, e.target.value)}
-              placeholder="0.00"
-            />
+            <input type="number" step="0.01" min="0" style={inputStyle} value={form[key]} onChange={e => set(key, e.target.value)} placeholder="0.00" />
           </div>
         ))}
       </div>
       {parseFloat(totalCost) > 0 && (
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#0D1B2A', marginBottom: 12 }}>
-          Total Estimated: ${totalCost}
-        </div>
+        <div style={{ fontSize: 13, fontWeight: 700, color: '#0D1B2A', marginBottom: 12 }}>Total Estimated: ${totalCost}</div>
       )}
 
       <button

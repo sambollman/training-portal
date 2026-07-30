@@ -193,7 +193,7 @@ export default function Pending() {
             {/* Request details */}
             <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
               <div style={{ background: COLORS.navy, padding: '16px 22px' }}>
-                <div style={{ color: COLORS.white, fontWeight: 700, fontSize: 16 }}>{selected.display_title} [{selected?.training_type}] [{selected?.approver_rank}]</div>
+                <div style={{ color: COLORS.white, fontWeight: 700, fontSize: 16 }}>{selected.display_title}</div>
                 <div style={{ color: '#8A9BB0', fontSize: 12, marginTop: 3 }}>
                   {(selected.session_date || selected.start_date) ? new Date((selected.session_date || selected.start_date) + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : '—'}
                   {selected.end_date ? ` – ${new Date(selected.end_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}` : ''}

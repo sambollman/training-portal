@@ -166,12 +166,13 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
       [step.external_request_id]
     );
 
-    const externalRequest = requestResult.rows[0];
-    const currentRank = req.user.rank?.toLowerCase();
-    const isOutOfState = externalRequest.is_out_of_state;
-    const isFinalStep =
+    const currentRank = req.user.rank?.toLowerCase()
+    const isOutOfState = externalRequest.is_out_of_state
+    const isFinalStep = currentRank === 'coordinator'
+    const shouldAutoRouteToCoordinator = (
       (currentRank === 'captain' && !isOutOfState) ||
-      currentRank === 'assistant chief';
+      currentRank === 'assistant chief'
+    )
 
     await db.query(`
       UPDATE approval_steps SET
@@ -194,6 +195,30 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
           status = $1, chain_status = 'complete'
         WHERE id = $2
       `, [decision, step.external_request_id]);
+    } else if (shouldAutoRouteToCoordinator) {
+      const coordinator = await db.query(
+        "SELECT * FROM users WHERE role = 'coordinator' AND is_active = true LIMIT 1"
+      );
+      if (coordinator.rows[0]) {
+        const maxStep = await db.query(
+          'SELECT MAX(step_number) as max FROM approval_steps WHERE external_request_id = $1',
+          [step.external_request_id]
+        );
+        await db.query(`
+          INSERT INTO approval_steps (external_request_id, step_number, approver_id, approver_name, approver_rank)
+          VALUES ($1, $2, $3, $4, $5)
+        `, [
+          step.external_request_id,
+          maxStep.rows[0].max + 1,
+          coordinator.rows[0].id,
+          coordinator.rows[0].full_name,
+          coordinator.rows[0].rank
+        ]);
+        await db.query(`
+          UPDATE external_training_requests SET chain_status = 'in_progress'
+          WHERE id = $1
+        `, [step.external_request_id]);
+      }
     } else if (next_approver_id) {
       const nextApprover = await db.query('SELECT * FROM users WHERE id = $1', [next_approver_id]);
       const maxStep = await db.query(

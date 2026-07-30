@@ -11,7 +11,7 @@ const COLORS = {
 }
 
 const RANKS = ['Civilian', 'Officer', 'Manager', 'Sergeant', 'Lieutenant', 'Captain', 'Assistant Chief', 'Chief']
-const ROLES = ['officer', 'instructor', 'supervisor', 'coordinator']
+const ROLES = ['civilian', 'officer', 'instructor', 'supervisor', 'coordinator']
 
 const emptyForm = {
   first_name: '', last_name: '', email: '',

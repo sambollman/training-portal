@@ -35,7 +35,7 @@ export default function Pending() {
       const portal = pr.data.approvals.map(a => ({ ...a, source: 'portal', display_title: a.training_title }))
       const external = er.data.approvals.map(a => ({ ...a, source: 'external', display_title: a.training_name }))
       setApprovals([...portal, ...external].sort((a, b) => new Date(a.created_at) - new Date(b.created_at)))
-      setAllApprovers(ur.data.users.filter(u => u.is_active))
+      setAllApprovers(ur.data.users.filter(u => u.is_active && (u.role === 'supervisor' || u.role === 'coordinator')))
     }).finally(() => setLoading(false))
   }, [])
 

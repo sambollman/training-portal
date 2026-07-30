@@ -59,12 +59,18 @@ router.post('/submit', requireAuth, async (req, res) => {
 router.get('/my-requests', requireAuth, async (req, res) => {
   try {
     const result = await db.query(`
-      SELECT *,
-        to_char(start_date, 'YYYY-MM-DD') as start_date,
-        to_char(end_date, 'YYYY-MM-DD') as end_date
-      FROM external_training_requests
-      WHERE officer_id = $1
-      ORDER BY created_at DESC
+      SELECT etr.*,
+        to_char(etr.start_date, 'YYYY-MM-DD') as start_date,
+        to_char(etr.end_date, 'YYYY-MM-DD') as end_date,
+        (SELECT comment FROM approval_steps 
+         WHERE external_request_id = etr.id AND decision = 'returned'
+         ORDER BY decided_at DESC LIMIT 1) as return_comment,
+        (SELECT approver_name FROM approval_steps 
+         WHERE external_request_id = etr.id AND decision = 'returned'
+         ORDER BY decided_at DESC LIMIT 1) as returned_by
+      FROM external_training_requests etr
+      WHERE etr.officer_id = $1
+      ORDER BY etr.created_at DESC
     `, [req.user.id]);
     res.json({ requests: result.rows });
   } catch (err) {

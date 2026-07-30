@@ -242,9 +242,14 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
     // Determine if this is the final step
     const currentRank = req.user.rank?.toLowerCase()
     const isOutOfState = training.is_out_of_state
-    const isFinalStep = 
-      currentRank === 'captain' && !isOutOfState ||
+    const isExternal = training.training_type === 'external'
+    const isFinalStep = isExternal
+      ? currentRank === 'coordinator'
+      : (currentRank === 'captain' && !isOutOfState) || currentRank === 'assistant chief'
+    const shouldAutoRouteToCoordinator = isExternal && (
+      (currentRank === 'captain' && !isOutOfState) ||
       currentRank === 'assistant chief'
+    )
 
     // Update the current step
     await db.query(`
@@ -268,23 +273,41 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
     }
 
     if (isFinalStep) {
-      // Complete the chain
       await db.query(`
         UPDATE enrollment_requests SET
           status = $1, chain_status = 'complete', acted_on_at = NOW(), acted_on_by = $2
         WHERE id = $3
       `, [decision, req.user.id, step.enrollment_request_id])
+    } else if (shouldAutoRouteToCoordinator) {
+      const coordinator = await db.query(
+        "SELECT * FROM users WHERE role = 'coordinator' AND is_active = true LIMIT 1"
+      )
+      if (coordinator.rows[0]) {
+        const maxStep = await db.query(
+          'SELECT MAX(step_number) as max FROM approval_steps WHERE enrollment_request_id = $1',
+          [step.enrollment_request_id]
+        )
+        await db.query(`
+          INSERT INTO approval_steps (enrollment_request_id, step_number, approver_id, approver_name, approver_rank)
+          VALUES ($1, $2, $3, $4, $5)
+        `, [
+          step.enrollment_request_id,
+          maxStep.rows[0].max + 1,
+          coordinator.rows[0].id,
+          coordinator.rows[0].full_name,
+          coordinator.rows[0].rank
+        ])
+        await db.query(`
+          UPDATE enrollment_requests SET chain_status = 'in_progress', supervisor_id = $1
+          WHERE id = $2
+        `, [coordinator.rows[0].id, step.enrollment_request_id])
+      }
     } else if (next_approver_id) {
-      // Get next approver info
       const nextApprover = await db.query('SELECT * FROM users WHERE id = $1', [next_approver_id])
-
-      // Get current step number
       const maxStep = await db.query(
         'SELECT MAX(step_number) as max FROM approval_steps WHERE enrollment_request_id = $1',
         [step.enrollment_request_id]
       )
-
-      // Create next approval step
       await db.query(`
         INSERT INTO approval_steps 
           (enrollment_request_id, step_number, approver_id, approver_name, approver_rank)
@@ -296,13 +319,13 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
         nextApprover.rows[0].full_name,
         nextApprover.rows[0].rank
       ])
-
-      // Update chain status
       await db.query(`
         UPDATE enrollment_requests SET chain_status = 'in_progress', supervisor_id = $1
         WHERE id = $2
       `, [next_approver_id, step.enrollment_request_id])
     }
+
+    res.json({ ok: true, is_final: isFinalStep })
     // Insert additional approver if requested
     if (req.body.additional_approver_id) {
       const addlApprover = await db.query('SELECT * FROM users WHERE id = $1', [req.body.additional_approver_id])

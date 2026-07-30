@@ -325,7 +325,7 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
       `, [next_approver_id, step.enrollment_request_id])
     }
 
-    res.json({ ok: true, is_final: isFinalStep })
+    
     // Insert additional approver if requested
     if (req.body.additional_approver_id) {
       const addlApprover = await db.query('SELECT * FROM users WHERE id = $1', [req.body.additional_approver_id])

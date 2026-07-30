@@ -239,13 +239,12 @@ export default function MySchedule() {
       const endpoint = request.source === 'external'
         ? `/api/external/${request.id}`
         : `/api/requests/${request.id}`
-    await axios.delete(endpoint)
-      setRequests(prev => prev.filter(r => r.id !== requestId))
+      await axios.delete(endpoint)
+      setRequests(prev => prev.filter(r => r.id !== request.id))
     } catch (err) {
       alert(err.response?.data?.error || 'Could not withdraw request')
     }
   }
-
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
     setTimeout(() => setToast(null), 3500)

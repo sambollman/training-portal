@@ -243,9 +243,12 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
     const currentRank = req.user.rank?.toLowerCase()
     const isOutOfState = training.is_out_of_state
     const isExternal = training.training_type === 'external'
-    const isFinalStep = isExternal
-      ? currentRank === 'coordinator'
-      : (currentRank === 'captain' && !isOutOfState) || currentRank === 'assistant chief'
+    const isInternal = training.training_type === 'internal'
+
+    const isFinalStep = isInternal
+      ? currentRank === 'lieutenant'
+      : currentRank === 'coordinator'
+
     const shouldAutoRouteToCoordinator = isExternal && (
       (currentRank === 'captain' && !isOutOfState) ||
       currentRank === 'assistant chief'

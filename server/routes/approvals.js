@@ -155,7 +155,6 @@ router.get('/my-pending', requireAuth, async (req, res) => {
         t.location,
         t.is_out_of_state,
         t.training_type,
-        t.training_type,
         u.full_name as officer_name,
         u.rank as officer_rank,
         u.badge_number as officer_badge,

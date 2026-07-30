@@ -32,7 +32,7 @@ function RequestForm({ trainingId, userRank, trainingData, onSuccess, onCancel }
   const [perDiem, setPerDiem] = useState('')
 
   useEffect(() => {
-    axios.get('/api/approvals/first-approvers')
+    aaxios.get(`/api/approvals/first-approvers?type=${trainingData?.training_type || 'internal'}`)
       .then(res => setApprovers(res.data.approvers))
       .catch(() => setError('Could not load approvers'))
   }, [])

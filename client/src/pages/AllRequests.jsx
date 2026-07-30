@@ -120,7 +120,7 @@ export default function AllRequests() {
             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Type</label>
             <select style={{ ...inputStyle, width: '100%' }} value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
               <option value="all">All Types</option>
-              <option value="portal">Portal</option>
+              <option value="portal">Internal</option>
               <option value="external">External</option>
             </select>
           </div>

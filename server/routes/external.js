@@ -169,7 +169,7 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
     const currentRank = req.user.rank?.toLowerCase()
     const currentRole = req.user.role?.toLowerCase()
     const isOutOfState = externalRequest.is_out_of_state
-    const isFinalStep = currentRank === 'coordinator'
+    const isFinalStep = currentRole === 'coordinator'
     const shouldAutoRouteToCoordinator = (
       (currentRank === 'captain' && !isOutOfState) ||
       currentRank === 'assistant chief'

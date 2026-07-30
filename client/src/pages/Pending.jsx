@@ -99,8 +99,13 @@ export default function Pending() {
   }
 
   const handleSubmit = async () => {
+    const rank = selected?.approver_rank?.toLowerCase()
+    const isOutOfState = selected?.is_out_of_state
+    const isInternal = selected?.training_type === 'internal'
+    const isAutoRoute = !isInternal && ((rank === 'captain' && !isOutOfState) || rank === 'assistant chief')
+  
     if (!decision) { showToast('Please select a decision', 'error'); return }
-    if (decision !== 'returned' && nextApprovers.length > 0 && !selectedNextApprover && !selected.is_additional) {
+    if (decision !== 'returned' && nextApprovers.length > 0 && !selectedNextApprover && !selected.is_additional && !isAutoRoute) {
       showToast('Please select who to forward this to', 'error'); return
     }
     setSubmitting(true)

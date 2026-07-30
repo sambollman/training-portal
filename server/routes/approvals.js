@@ -301,7 +301,7 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
           maxStep.rows[0].max + 1,
           coordinator.rows[0].id,
           coordinator.rows[0].full_name,
-          coordinator.rows[0].rank
+          'coordinator'
         ])
         await db.query(`
           UPDATE enrollment_requests SET chain_status = 'in_progress', supervisor_id = $1

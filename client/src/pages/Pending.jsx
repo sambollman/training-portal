@@ -76,7 +76,7 @@ export default function Pending() {
         ? rank === 'lieutenant'
         : rank === 'coordinator'
     )
-    console.log('training_type:', selected?.training_type, 'isInternal:', isInternal, 'isFinal:', isFinal)
+    
 
     if (isFinal) {
       setNextApprovers([])

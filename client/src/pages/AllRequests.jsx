@@ -179,7 +179,7 @@ export default function AllRequests() {
                     {r.request_type === 'supervisor_enrolled' ? 'Supervisor enrolled' : 'Self-requested'}
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase', background: r.source === 'portal' ? '#E0ECF8' : '#FFF0E0', color: r.source === 'portal' ? '#1A5A8A' : '#B5621B' }}>{r.source}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase', background: r.source === 'portal' ? '#E0ECF8' : '#FFF0E0', color: r.source === 'portal' ? '#1A5A8A' : '#B5621B' }}>{r.source === 'portal' ? 'Internal' : 'External'}</span>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <StatusBadge status={r.chain_status === 'in_progress' || r.chain_status === 'returned' ? 'in_progress' : r.status} />

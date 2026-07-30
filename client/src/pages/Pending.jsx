@@ -159,7 +159,7 @@ export default function Pending() {
                 <div style={{ fontWeight: 700, fontSize: 13, color: selected?.id === a.id ? COLORS.white : COLORS.textDark }}>{a.officer_name}</div>
                 <div style={{ fontSize: 12, color: selected?.id === a.id ? '#8A9BB0' : COLORS.textMid, marginTop: 2 }}>{a.display_title}</div>
                 <div style={{ fontSize: 11, color: selected?.id === a.id ? '#8A9BB0' : COLORS.textLight, marginTop: 2 }}>
-                  {a.session_date ? new Date(a.session_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+                  {(a.session_date || a.start_date) ? new Date((a.session_date || a.start_date) + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                   {' · '}Step {a.step_number}
                 </div>
               </div>

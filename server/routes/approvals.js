@@ -9,10 +9,14 @@ const { requireAuth } = require('../middleware/auth');
 router.get('/first-approvers', requireAuth, async (req, res) => {
   try {
     const officerRank = req.user.rank?.toLowerCase()
+    const trainingType = req.query.type // 'internal' or 'external'
     const isSgtOrManager = officerRank === 'sergeant' || officerRank === 'manager'
-
+    
     let ranks
-    if (isSgtOrManager) {
+    if (trainingType === 'internal') {
+      // Internal trainings always go to Lt
+      ranks = ['Lieutenant']
+    } else if (isSgtOrManager) {
       ranks = ['Lieutenant']
     } else {
       ranks = ['Sergeant', 'Manager']
@@ -25,7 +29,6 @@ router.get('/first-approvers', requireAuth, async (req, res) => {
       WHERE rank IN (${placeholders}) AND is_active = true AND id != $${ranks.length + 1}
       ORDER BY last_name ASC, first_name ASC
     `, [...ranks, req.user.id])
-
     res.json({ approvers: result.rows })
   } catch (err) {
     console.error(err)

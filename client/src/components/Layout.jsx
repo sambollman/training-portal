@@ -35,12 +35,14 @@ export default function Layout({ children }) {
 
   useEffect(() => {
     const fetchReturned = () => {
-      axios.get('/api/requests')
-        .then(res => {
-          const count = res.data.requests.filter(r => r.chain_status === 'returned').length
-          setReturnedCount(count)
-        })
-        .catch(() => {})
+      Promise.all([
+        axios.get('/api/requests'),
+        axios.get('/api/external/my-requests'),
+      ]).then(([pr, er]) => {
+        const portalReturned = pr.data.requests.filter(r => r.chain_status === 'returned').length
+        const externalReturned = er.data.requests.filter(r => r.chain_status === 'returned').length
+        setReturnedCount(portalReturned + externalReturned)
+      }).catch(() => {})
     }
 
     fetchReturned()

@@ -259,7 +259,9 @@ router.get('/history/:requestId', requireAuth, async (req, res) => {
 
 // POST /api/external/respond/:requestId - officer responds to a returned external request
 router.post('/respond/:requestId', requireAuth, async (req, res) => {
-  const { officer_response, reason, training_cost, travel_cost, hotel_cost, per_diem } = req.body;
+  const { officer_response, reason, training_cost, travel_cost, hotel_cost, per_diem,
+    training_name, organization, location, is_out_of_state, start_date, end_date,
+    duration_hours, website, description } = req.body;
 
   try {
     const request = await db.query(
@@ -283,15 +285,33 @@ router.post('/respond/:requestId', requireAuth, async (req, res) => {
         travel_cost = $4,
         hotel_cost = $5,
         per_diem = $6,
+        training_name = COALESCE($7, training_name),
+        organization = COALESCE($8, organization),
+        location = COALESCE($9, location),
+        is_out_of_state = $10,
+        start_date = COALESCE($11, start_date),
+        end_date = COALESCE($12, end_date),
+        duration_hours = COALESCE($13, duration_hours),
+        website = COALESCE($14, website),
+        description = COALESCE($15, description),
         chain_status = 'in_progress'
-      WHERE id = $7
+      WHERE id = $16
     `, [
       officer_response || null,
       reason || request.rows[0].reason,
-      training_cost || request.rows[0].training_cost,
-      travel_cost || request.rows[0].travel_cost,
-      hotel_cost || request.rows[0].hotel_cost,
-      per_diem || request.rows[0].per_diem,
+      training_cost || null,
+      travel_cost || null,
+      hotel_cost || null,
+      per_diem || null,
+      training_name || null,
+      organization || null,
+      location || null,
+      is_out_of_state || false,
+      start_date || null,
+      end_date || null,
+      duration_hours || null,
+      website || null,
+      description || null,
       req.params.requestId
     ]);
 

@@ -75,6 +75,9 @@ export default function Pending() {
       isInternal
         ? rank === 'lieutenant'
         : rank === 'coordinator'
+    if (isFinal) {
+      setNextApprovers([])
+      return
     )
 
     if (d !== 'returned' && !isFinal) {

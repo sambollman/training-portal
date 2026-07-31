@@ -126,7 +126,7 @@ export default function Compliance() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+      <div style={{ display: 'flex', gap: 6, marginTop: 12, marginBottom: 12 }}>
         {[
           { label: 'All Personnel', value: 'all' },
           { label: 'Sworn', value: 'sworn' },

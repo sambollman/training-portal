@@ -16,6 +16,7 @@ export default function Compliance() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('not_signed_up')
+  const [personnelFilter, setPersonnelFilter] = useState('all')
 
   useEffect(() => {
     axios.get('/api/compliance/tags')
@@ -115,6 +116,18 @@ export default function Compliance() {
             style={{ padding: '9px 20px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: 'none', background: COLORS.navy, color: COLORS.white }}
           >{loading ? 'Loading...' : 'Search'}</button>
         </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+        {[
+          { label: 'All Personnel', value: 'all' },
+          { label: 'Sworn', value: 'sworn' },
+          { label: 'Civilian', value: 'civilian' },
+        ].map(({ label, value }) => (
+          <button key={value} onClick={() => setPersonnelFilter(value)} style={{ padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${personnelFilter === value ? COLORS.navy : COLORS.border}`, background: personnelFilter === value ? COLORS.navy : COLORS.white, color: personnelFilter === value ? COLORS.white : COLORS.textMid }}>
+            {label}
+          </button>
+        ))}
       </div>
 
       {data && (

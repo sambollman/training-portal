@@ -35,7 +35,7 @@ router.get('/', requireAuth, requireRole('supervisor', 'coordinator'), async (re
 
     // Get all active users
     const usersResult = await db.query(`
-      SELECT id, first_name, last_name, full_name, badge_number, rank, unit
+      SELECT id, first_name, last_name, full_name, badge_number, rank, unit, role
       FROM users
       WHERE is_active = true
       ORDER BY last_name ASC, first_name ASC

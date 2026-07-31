@@ -40,6 +40,13 @@ export default function Compliance() {
     }
   }
 
+  const filterByPersonnel = (users) => {
+    if (!users) return []
+    if (personnelFilter === 'all') return users
+    if (personnelFilter === 'civilian') return users.filter(u => u.role === 'civilian')
+    return users.filter(u => u.role !== 'civilian')
+  }
+
   const inputStyle = {
     width: '100%', padding: '9px 12px', borderRadius: 6,
     border: `1px solid ${COLORS.border}`, fontSize: 13,
@@ -115,6 +122,17 @@ export default function Compliance() {
             disabled={loading || (!selectedTag && !customTag)}
             style={{ padding: '9px 20px', borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: 'none', background: COLORS.navy, color: COLORS.white }}
           >{loading ? 'Loading...' : 'Search'}</button>
+          <div style={{ gridColumn: '1 / -1', display: 'flex', gap: 6 }}>
+            {[
+              { label: 'All Personnel', value: 'all' },
+              { label: 'Sworn', value: 'sworn' },
+              { label: 'Civilian', value: 'civilian' },
+            ].map(({ label, value }) => (
+              <button key={value} onClick={() => setPersonnelFilter(value)} style={{ padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${personnelFilter === value ? COLORS.navy : COLORS.border}`, background: personnelFilter === value ? COLORS.navy : COLORS.white, color: personnelFilter === value ? COLORS.white : COLORS.textMid }}>
+                {label}
+              </button>
+          ))}
+          </div>
         </div>
       </div>
 
@@ -134,9 +152,9 @@ export default function Compliance() {
         <div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
             {[
-              { label: 'Not Signed Up', value: data.not_signed_up.length, color: COLORS.danger, bg: COLORS.dangerLight, tab: 'not_signed_up' },
-              { label: 'Signed Up', value: data.signed_up.length, color: COLORS.warning, bg: COLORS.warningLight, tab: 'signed_up' },
-              { label: 'Attended', value: data.attended.length, color: COLORS.success, bg: COLORS.successLight, tab: 'attended' },
+              { label: 'Not Signed Up', value: filterByPersonnel(data.not_signed_up).length, color: COLORS.danger, bg: COLORS.dangerLight, tab: 'not_signed_up' },
+              { label: 'Signed Up', value: filterByPersonnel(data.signed_up).length, color: COLORS.warning, bg: COLORS.warningLight, tab: 'signed_up' },
+              { label: 'Attended', value: filterByPersonnel(data.attended).length, color: COLORS.success, bg: COLORS.successLight, tab: 'attended' },
             ].map(({ label, value, color, bg, tab }) => (
               <div key={tab} onClick={() => setActiveTab(tab)} style={{ background: bg, borderRadius: 10, padding: '20px 24px', textAlign: 'center', cursor: 'pointer', border: `2px solid ${activeTab === tab ? color : 'transparent'}` }}>
                 <div style={{ fontSize: 36, fontWeight: 700, color }}>{value}</div>
@@ -152,9 +170,9 @@ export default function Compliance() {
               <button style={tabStyle('attended')} onClick={() => setActiveTab('attended')}>Attended ({data.attended.length})</button>
             </div>
             <div>
-              {activeTab === 'not_signed_up' && <UserTable users={data.not_signed_up} emptyMsg="Everyone has signed up!" />}
-              {activeTab === 'signed_up' && <UserTable users={data.signed_up} showTraining showStatus emptyMsg="No one is pending." />}
-              {activeTab === 'attended' && <UserTable users={data.attended} showTraining emptyMsg="No one has attended yet." />}
+              {activeTab === 'not_signed_up' && <UserTable users={filterByPersonnel(data.not_signed_up)} emptyMsg="Everyone has signed up!" />}
+              {activeTab === 'signed_up' && <UserTable users={filterByPersonnel(data.signed_up)} showTraining showStatus emptyMsg="No one is pending." />}
+              {activeTab === 'attended' && <UserTable users={filterByPersonnel(data.attended)} showTraining emptyMsg="No one has attended yet." />}
             </div>
           </div>
 

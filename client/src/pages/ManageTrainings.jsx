@@ -39,6 +39,9 @@ export default function ManageTrainings() {
   const [enrollLoading, setEnrollLoading] = useState(false)
   const [toast, setToast] = useState(null)
   const [markingAttendance, setMarkingAttendance] = useState(null)
+  const [search, setSearch] = useState('')
+  const [dateFilter, setDateFilter] = useState('all')
+  const [typeFilter, setTypeFilter] = useState('all')
 
   useEffect(() => {
     axios.get('/api/trainings/all')
@@ -90,6 +93,17 @@ export default function ManageTrainings() {
     }
   }
 
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const filteredTrainings = trainings.filter(t => {
+    if (search && !t.title?.toLowerCase().includes(search.toLowerCase())) return false
+    if (typeFilter !== 'all' && t.training_type !== typeFilter) return false
+    if (dateFilter === 'upcoming' && t.session_date && new Date(t.session_date + 'T12:00:00') < today) return false
+    if (dateFilter === 'past' && t.session_date && new Date(t.session_date + 'T12:00:00') >= today) return false
+    return true
+  })
+
   const handleToggleClose = async (training) => {
   const newState = !training.is_closed
   try {
@@ -119,8 +133,34 @@ export default function ManageTrainings() {
             cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: 12,
           }}>+ New Training</button>
         </div>
+        <div style={{ marginBottom: 12 }}>
+          <input
+            placeholder="Search trainings..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ width: '100%', padding: '8px 12px', borderRadius: 6, border: `1px solid ${COLORS.border}`, fontSize: 13, color: COLORS.textDark, background: COLORS.white, boxSizing: 'border-box', marginBottom: 8 }}
+          />
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+            {[
+              { label: 'All', value: 'all' },
+              { label: 'Upcoming', value: 'upcoming' },
+              { label: 'Past', value: 'past' },
+            ].map(({ label, value }) => (
+              <button key={value} onClick={() => setDateFilter(value)} style={{ padding: '4px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: `1px solid ${dateFilter === value ? COLORS.navy : COLORS.border}`, background: dateFilter === value ? COLORS.navy : COLORS.white, color: dateFilter === value ? COLORS.white : COLORS.textMid }}>
+                {label}
+              </button>
+            ))}
+            <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={{ padding: '4px 10px', borderRadius: 20, fontSize: 12, border: `1px solid ${COLORS.border}`, background: COLORS.white, color: COLORS.textMid, cursor: 'pointer' }}>
+              <option value="all">All Types</option>
+              <option value="internal">Internal</option>
+              <option value="external">External</option>
+            </select>
+          </div>
+          <div style={{ fontSize: 12, color: COLORS.textLight }}>{filteredTrainings.length} of {trainings.length} trainings</div>
+        </div>
+
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {trainings.map(t => (
+          {filteredTrainings.map(t => (
             <div
               key={t.id}
               onClick={() => handleSelectTraining(t)}

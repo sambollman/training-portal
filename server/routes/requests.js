@@ -45,6 +45,8 @@ router.get('/pending', requireAuth, requireRole('supervisor', 'coordinator'), as
 router.get('/all', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
   try {
     let query, params;
+    const fullHistory = req.query.fullHistory === 'true';
+    const recentClause = `(t.session_date IS NULL OR t.session_date >= CURRENT_DATE - 90 OR er.chain_status <> 'complete')`;
 
     if (req.user.role === 'coordinator') {
       query = `
@@ -54,7 +56,9 @@ router.get('/all', requireAuth, requireRole('supervisor', 'coordinator'), async 
         FROM enrollment_requests er
         JOIN trainings t ON er.training_id = t.id
         JOIN users u ON er.officer_id = u.id
+        ${fullHistory ? '' : `WHERE ${recentClause}`}
         ORDER BY er.created_at DESC
+        LIMIT 1000
       `;
       params = [];
     } else {
@@ -66,14 +70,16 @@ router.get('/all', requireAuth, requireRole('supervisor', 'coordinator'), async 
         JOIN trainings t ON er.training_id = t.id
         JOIN users u ON er.officer_id = u.id
         LEFT JOIN approval_steps ap ON ap.enrollment_request_id = er.id
-        WHERE er.supervisor_id = $1 OR ap.approver_id = $1
+        WHERE (er.supervisor_id = $1 OR ap.approver_id = $1)
+        ${fullHistory ? '' : `AND ${recentClause}`}
         ORDER BY er.created_at DESC
+        LIMIT 1000
       `;
       params = [req.user.id];
     }
 
     const result = await db.query(query, params);
-    res.json({ requests: result.rows });
+    res.json({ requests: result.rows, fullHistory });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch requests' });

@@ -398,6 +398,8 @@ router.delete('/:id', requireAuth, async (req, res) => {
 router.get('/all', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
   try {
     let query, params;
+    const fullHistory = req.query.fullHistory === 'true';
+    const recentClause = `(etr.start_date IS NULL OR etr.start_date >= CURRENT_DATE - 90 OR etr.chain_status <> 'complete')`;
 
     if (req.user.role === 'coordinator') {
       query = `
@@ -407,7 +409,9 @@ router.get('/all', requireAuth, requireRole('supervisor', 'coordinator'), async 
           u.full_name as officer_name, u.badge_number, u.unit
         FROM external_training_requests etr
         JOIN users u ON etr.officer_id = u.id
+        ${fullHistory ? '' : `WHERE ${recentClause}`}
         ORDER BY etr.created_at DESC
+        LIMIT 1000
       `;
       params = [];
     } else {
@@ -420,13 +424,15 @@ router.get('/all', requireAuth, requireRole('supervisor', 'coordinator'), async 
         JOIN users u ON etr.officer_id = u.id
         LEFT JOIN approval_steps ap ON ap.external_request_id = etr.id
         WHERE ap.approver_id = $1
+        ${fullHistory ? '' : `AND ${recentClause}`}
         ORDER BY etr.created_at DESC
+        LIMIT 1000
       `;
       params = [req.user.id];
     }
 
     const result = await db.query(query, params);
-    res.json({ requests: result.rows });
+    res.json({ requests: result.rows, fullHistory });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch external requests' });

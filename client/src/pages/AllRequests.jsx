@@ -35,11 +35,15 @@ export default function AllRequests() {
   const [dateFilter, setDateFilter] = useState('all')
   const [customStart, setCustomStart] = useState('')
   const [customEnd, setCustomEnd] = useState('')
+  const [fullHistory, setFullHistory] = useState(false)
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   useEffect(() => {
+    setHistoryLoading(true)
+    const params = fullHistory ? { fullHistory: 'true' } : {}
     Promise.all([
-      axios.get('/api/requests/all'),
-      axios.get('/api/external/all'),
+      axios.get('/api/requests/all', { params }),
+      axios.get('/api/external/all', { params }),
     ]).then(([pr, er]) => {
       const portal = pr.data.requests.map(r => ({ ...r, source: 'portal' }))
       const external = er.data.requests.map(r => ({
@@ -51,8 +55,8 @@ export default function AllRequests() {
         request_type: 'self_requested',
       }))
       setAllRequests([...portal, ...external].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)))
-    }).finally(() => setLoading(false))
-  }, [])
+    }).finally(() => { setLoading(false); setHistoryLoading(false) })
+  }, [fullHistory])
 
   const filtered = allRequests.filter(r => {
     // Search
@@ -90,7 +94,13 @@ export default function AllRequests() {
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: COLORS.navy, margin: 0 }}>All Requests</h1>
         <p style={{ color: COLORS.textLight, fontSize: 13, marginTop: 4 }}>
-          {filtered.length} of {allRequests.length} requests
+          {historyLoading ? 'Loading…' : `${filtered.length} of ${allRequests.length} requests`}
+          {' · '}
+          {fullHistory ? (
+            <span>Showing full history — <a onClick={() => setFullHistory(false)} style={{ color: COLORS.navy, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>show recent only</a></span>
+          ) : (
+            <span>Showing recent + open requests — <a onClick={() => setFullHistory(true)} style={{ color: COLORS.navy, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>show full history</a></span>
+          )}
         </p>
       </div>
 

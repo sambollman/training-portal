@@ -42,12 +42,15 @@ export default function ManageTrainings() {
   const [search, setSearch] = useState('')
   const [dateFilter, setDateFilter] = useState('all')
   const [typeFilter, setTypeFilter] = useState('all')
+  const [fullHistory, setFullHistory] = useState(false)
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   useEffect(() => {
-    axios.get('/api/trainings/all')
+    setHistoryLoading(true)
+    axios.get('/api/trainings/all', { params: fullHistory ? { fullHistory: 'true' } : {} })
       .then(res => setTrainings(res.data.trainings))
-      .finally(() => setLoading(false))
-  }, [])
+      .finally(() => { setLoading(false); setHistoryLoading(false) })
+  }, [fullHistory])
 
   const showToast = (msg, type = 'success') => {
     setToast({ msg, type })
@@ -156,7 +159,15 @@ export default function ManageTrainings() {
               <option value="external">External</option>
             </select>
           </div>
-          <div style={{ fontSize: 12, color: COLORS.textLight }}>{filteredTrainings.length} of {trainings.length} trainings</div>
+          <div style={{ fontSize: 12, color: COLORS.textLight }}>
+            {historyLoading ? 'Loading…' : `${filteredTrainings.length} of ${trainings.length} trainings`}
+            {' · '}
+            {fullHistory ? (
+              <span>Showing full history — <a onClick={() => setFullHistory(false)} style={{ color: COLORS.navy, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>show recent only</a></span>
+            ) : (
+              <span>Showing upcoming + last 90 days — <a onClick={() => setFullHistory(true)} style={{ color: COLORS.navy, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>show full history</a></span>
+            )}
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

@@ -49,6 +49,7 @@ router.get('/', requireAuth, async (req, res) => {
 // GET /api/trainings/all - all trainings including past (coordinator only)
 router.get('/all', requireAuth, requireRole('coordinator', 'instructor'), async (req, res) => {
   try {
+    const fullHistory = req.query.fullHistory === 'true';
     const result = await db.query(`
       SELECT 
         t.id, t.title, t.category, t.description, t.instructor, t.location,
@@ -64,10 +65,12 @@ router.get('/all', requireAuth, requireRole('coordinator', 'instructor'), async 
       FROM trainings t
       LEFT JOIN enrollment_requests er ON t.id = er.training_id
       WHERE t.is_archived = false
+      ${fullHistory ? '' : `AND (t.session_date IS NULL OR t.session_date >= CURRENT_DATE - 90)`}
       GROUP BY t.id
       ORDER BY t.session_date DESC
+      LIMIT 1000
     `);
-    res.json({ trainings: result.rows });
+    res.json({ trainings: result.rows, fullHistory });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch trainings' });

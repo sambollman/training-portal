@@ -259,7 +259,7 @@ export default function Calendar() {
           <div style={{ background: COLORS.white, borderRadius: 12, padding: 32, width: '100%', maxWidth: 540, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
             <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.navy, marginBottom: 20 }}>Add to Calendar</div>
             <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div style={{ gridColumn: '1 / -1' }}>
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Title *</label>
                   <input required style={inputStyle} value={form.title} onChange={e => set('title', e.target.value)} />

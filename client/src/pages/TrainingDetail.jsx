@@ -83,7 +83,7 @@ function RequestForm({ trainingId, userRank, trainingData, onSuccess, onCancel }
         </div>
         <div style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Estimated Costs</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {[
               { label: 'Training Cost ($)', value: trainingCost, set: setTrainingCost },
               { label: 'Travel Cost ($)', value: travelCost, set: setTravelCost },
@@ -236,12 +236,12 @@ export default function TrainingDetail() {
           <InfoBlock label="Duration" value={training.duration_hours ? `${training.duration_hours} hours` : '—'} />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>
+        <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>
           <InfoBlock label="Location" value={training.location} />
           <InfoBlock label="Instructor" value={training.instructors && training.instructors.length > 0 ? training.instructors.map(i => `${i.first_name} ${i.last_name}`).join(', ') : training.instructor || '—'} />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>
+        <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>
           <InfoBlock label="Seats" value={training.no_seat_limit ? 'No limit' : `${training.enrolled_count} / ${training.seat_capacity} enrolled`} />
           <InfoBlock label="Cost per Attendee" value={training.cost ? `$${parseFloat(training.cost).toFixed(2)}` : 'Free'} />
         </div>

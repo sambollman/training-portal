@@ -115,7 +115,7 @@ export default function CreateTraining() {
             <input style={inputStyle} value={form.compliance_tag} onChange={e => set('compliance_tag', e.target.value)} placeholder="e.g. Annual Firearms Qual 2026" />
           </Field>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Field label="Category">
               <input style={inputStyle} value={form.category} onChange={e => set('category', e.target.value)} placeholder="e.g. Tactics, Policy" />
             </Field>
@@ -139,7 +139,7 @@ export default function CreateTraining() {
         <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 24, marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.navy, marginBottom: 16, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>Date & Time</div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Field label="Start Date" required>
               <input type="date" style={inputStyle} value={form.session_date} onChange={e => set('session_date', e.target.value)} required />
             </Field>
@@ -162,7 +162,7 @@ export default function CreateTraining() {
         <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 24, marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.navy, marginBottom: 16, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>Location & Instructor</div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Field label="Location">
               <input style={inputStyle} value={form.location} onChange={e => set('location', e.target.value)} />
             </Field>
@@ -203,7 +203,7 @@ export default function CreateTraining() {
             </Field>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Field label="Cost per Attendee ($)">
               <input type="number" step="0.01" min="0" style={inputStyle} value={form.cost} onChange={e => set('cost', e.target.value)} placeholder="0.00" />
             </Field>

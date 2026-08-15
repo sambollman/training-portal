@@ -248,7 +248,7 @@ export default function AdminUsers() {
             </div>
 
             <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <Field label="First Name" required>
                   <input style={inputStyle} value={form.first_name} onChange={e => set('first_name', e.target.value)} required />
                 </Field>

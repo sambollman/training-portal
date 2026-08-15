@@ -105,7 +105,7 @@ export default function Compliance() {
       </div>
 
       <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 24, marginBottom: 20, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
+        <div className="grid-filter" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'end' }}>
           <div>
             <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Select Existing Tag</label>
             <select style={inputStyle} value={selectedTag} onChange={e => { setSelectedTag(e.target.value); setCustomTag('') }}>
@@ -140,7 +140,7 @@ export default function Compliance() {
 
       {data && (
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+          <div className="grid-3col" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
             {[
               { label: 'Not Signed Up', value: filterByPersonnel(data.not_signed_up).length, color: COLORS.danger, bg: COLORS.dangerLight, tab: 'not_signed_up' },
               { label: 'Signed Up', value: filterByPersonnel(data.signed_up).length, color: COLORS.warning, bg: COLORS.warningLight, tab: 'signed_up' },

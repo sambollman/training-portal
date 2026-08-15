@@ -44,6 +44,24 @@
   }
 }
 
+/* ---------- Grids: forms, filter bars, split (sidebar+detail) layouts ---------- */
+
+@media (max-width: 480px) {
+  .grid-2col,
+  .grid-3col,
+  .grid-filter,
+  .split-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Filter bars that end in a button (e.g. Compliance's "Search" button in
+     an 'auto' column) — let the button size to its content on mobile
+     instead of stretching full-width like the inputs above it */
+  .grid-filter > button:last-child {
+    justify-self: start;
+  }
+}
+
 /* ---------- Nav / hamburger menu (Layout.jsx) ---------- */
 
 .hamburger-btn {

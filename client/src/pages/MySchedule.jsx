@@ -150,7 +150,7 @@ function ReturnedResponseForm({ request, onSubmit }) {
               <label style={labelStyle}>Training Name *</label>
               <input style={inputStyle} value={form.training_name} onChange={e => set('training_name', e.target.value)} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={labelStyle}>Organization / Provider</label>
                 <input style={inputStyle} value={form.organization} onChange={e => set('organization', e.target.value)} />
@@ -196,7 +196,7 @@ function ReturnedResponseForm({ request, onSubmit }) {
       </div>
 
       <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7F96', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Estimated Costs</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+      <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
         {[
           { label: 'Training Cost ($)', key: 'training_cost' },
           { label: 'Travel Cost ($)', key: 'travel_cost' },

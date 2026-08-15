@@ -119,7 +119,7 @@ export default function ManageTrainings() {
   if (loading) return <div style={{ padding: 40, color: COLORS.textLight }}>Loading...</div>
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 20, alignItems: 'start' }}>
+    <div className="split-layout" style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 20, alignItems: 'start' }}>
 
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>

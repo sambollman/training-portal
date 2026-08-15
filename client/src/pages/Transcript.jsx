@@ -130,7 +130,7 @@ function RecordRow({ record, onUpdate, onUpload, onDeleteCert, canEdit }) {
 
       {editing && (
         <div style={{ padding: '16px 20px', borderTop: `1px solid ${COLORS.border}`, background: COLORS.bg }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <div style={{ gridColumn: '1 / -1' }}>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Training Title</label>
               <input style={inputStyle} value={form.training_title} onChange={e => set('training_title', e.target.value)} />
@@ -370,7 +370,7 @@ export default function Transcript() {
         <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 24, marginBottom: 20, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.navy, marginBottom: 16 }}>Add Training Record</div>
           <form onSubmit={handleAddRecord}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: COLORS.textLight, marginBottom: 4, textTransform: 'uppercase' }}>Training Title *</label>
                 <input required style={inputStyle} value={addForm.training_title} onChange={e => setAddForm(p => ({ ...p, training_title: e.target.value }))} />

@@ -110,7 +110,7 @@ export default function RequestTraining() {
             />
           </Field>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Field label="Organization / Provider">
               <input style={inputStyle} value={form.organization} onChange={e => set('organization', e.target.value)} placeholder="e.g. ILEA, FBI Academy" />
             </Field>
@@ -119,7 +119,7 @@ export default function RequestTraining() {
             </Field>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Field label="Location">
               <input style={inputStyle} value={form.location} onChange={e => set('location', e.target.value)} />
             </Field>
@@ -135,7 +135,7 @@ export default function RequestTraining() {
         <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 24, marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.navy, marginBottom: 16, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>Date & Duration</div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+          <div className="grid-3col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
             <Field label="Start Date">
               <input type="date" style={inputStyle} value={form.start_date} onChange={e => set('start_date', e.target.value)} />
             </Field>
@@ -151,7 +151,7 @@ export default function RequestTraining() {
         <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 24, marginBottom: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
           <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.navy, marginBottom: 16, paddingBottom: 10, borderBottom: `1px solid ${COLORS.border}` }}>Estimated Costs</div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <Field label="Training Cost ($)">
               <input type="number" step="0.01" min="0" style={inputStyle} value={form.training_cost} onChange={e => set('training_cost', e.target.value)} placeholder="0.00" />
             </Field>

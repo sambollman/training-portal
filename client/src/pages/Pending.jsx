@@ -146,7 +146,7 @@ export default function Pending() {
   if (loading) return <div style={{ padding: 40, color: COLORS.textLight }}>Loading...</div>
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 20, alignItems: 'start' }}>
+    <div className="split-layout" style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 20, alignItems: 'start' }}>
 
       {/* Left - pending list */}
       <div>
@@ -206,7 +206,7 @@ export default function Pending() {
                   {selected.is_out_of_state ? ' · OUT OF STATE' : ''}
                 </div>
               </div>
-              <div style={{ padding: '18px 22px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="grid-2col" style={{ padding: '18px 22px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
                   <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Officer</div>
                   <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.textDark }}>{selected.officer_name}</div>
@@ -233,7 +233,7 @@ export default function Pending() {
               {(selected.training_cost || selected.travel_cost || selected.hotel_cost || selected.per_diem) && (
                 <div style={{ padding: '0 22px 18px' }}>
                   <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Estimated Costs</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                     {[
                       { label: 'Training', val: selected.training_cost },
                       { label: 'Travel', val: selected.travel_cost },

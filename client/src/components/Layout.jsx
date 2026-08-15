@@ -75,23 +75,23 @@ export default function Layout({ children }) {
   return (
     <div style={{ minHeight: '100vh', background: COLORS.bg, fontFamily: 'system-ui, sans-serif' }}>
       <header style={{ background: COLORS.navy, borderBottom: `3px solid ${COLORS.gold}` }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64 }}>
+        <div className="header-inner" style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 64 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ width: 38, height: 38, borderRadius: '50%', background: COLORS.gold, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>⭐</div>
+            <div style={{ width: 38, height: 38, borderRadius: '50%', background: COLORS.gold, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>⭐</div>
             <div>
-              <div style={{ color: COLORS.white, fontWeight: 700, fontSize: 17 }}>Training Portal</div>
-              <div style={{ color: COLORS.silver, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Officer Development</div>
+              <div className="brand-title" style={{ color: COLORS.white, fontWeight: 700, fontSize: 17 }}>Training Portal</div>
+              <div className="brand-sub" style={{ color: COLORS.silver, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Officer Development</div>
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ color: COLORS.white, fontSize: 13, fontWeight: 600 }}>{user?.full_name}</div>
-              <div style={{ color: COLORS.silver, fontSize: 11 }}>Badge #{user?.badge_number} · {user?.role}</div>
+              <div className="user-name" style={{ color: COLORS.white, fontSize: 13, fontWeight: 600 }}>{user?.full_name}</div>
+              <div className="user-meta" style={{ color: COLORS.silver, fontSize: 11 }}>Badge #{user?.badge_number} · {user?.role}</div>
             </div>
-            <button onClick={handleLogout} style={{
+            <button className="signout-btn" onClick={handleLogout} style={{
               padding: '7px 16px', borderRadius: 6, fontSize: 12, fontWeight: 600,
               cursor: 'pointer', border: `1.5px solid ${COLORS.silver}55`,
-              background: 'transparent', color: COLORS.silver,
+              background: 'transparent', color: COLORS.silver, flexShrink: 0,
             }}>Sign Out</button>
           </div>
         </div>

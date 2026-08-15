@@ -230,7 +230,8 @@ export default function ManageTrainings() {
                   <div style={{ fontWeight: 600 }}>No officers enrolled yet</div>
                 </div>
               ) : (
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <>
+                <table className="table-view" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
                       {['Officer', 'Badge', 'Unit', 'Status', 'Attended', ''].map(h => (
@@ -273,6 +274,46 @@ export default function ManageTrainings() {
                     ))}
                   </tbody>
                 </table>
+
+                <div className="card-list-view">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {enrollments.map(e => (
+                      <div key={e.id} style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+                          <div>
+                            <div style={{ fontWeight: 600, fontSize: 13, color: COLORS.textDark }}>{e.full_name}</div>
+                            <div style={{ fontSize: 12, color: COLORS.textMid }}>#{e.badge_number} · {e.unit}</div>
+                          </div>
+                          <StatusBadge status={e.status} />
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          {e.status === 'approved' || e.status === 'enrolled' ? (
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                              <span style={{ fontSize: 11, color: COLORS.textLight, marginRight: 2 }}>Attended:</span>
+                              <button
+                                onClick={() => handleAttendance(e.id, true)}
+                                disabled={markingAttendance === e.id}
+                                style={{ padding: '4px 10px', borderRadius: 4, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: 'none', background: e.attended === true ? COLORS.success : COLORS.bg, color: e.attended === true ? COLORS.white : COLORS.textMid }}
+                              >Yes</button>
+                              <button
+                                onClick={() => handleAttendance(e.id, false)}
+                                disabled={markingAttendance === e.id}
+                                style={{ padding: '4px 10px', borderRadius: 4, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: 'none', background: e.attended === false ? COLORS.danger : COLORS.bg, color: e.attended === false ? COLORS.white : COLORS.textMid }}
+                              >No</button>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: 12, color: COLORS.textLight }}>—</span>
+                          )}
+                          <button
+                            onClick={() => handleUnenroll(e.id)}
+                            style={{ fontSize: 11, fontWeight: 700, color: COLORS.danger, background: 'none', border: 'none', cursor: 'pointer' }}
+                          >Unenroll</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                </>
               )}
             </div>
           </div>

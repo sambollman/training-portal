@@ -221,7 +221,7 @@ export default function Enroll() {
             {enrollments.length > 0 && (
               <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
                 <div style={{ padding: '14px 20px', borderBottom: `1px solid ${COLORS.border}`, fontSize: 13, fontWeight: 700, color: COLORS.navy }}>Currently Enrolled ({enrollments.length})</div>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <table className="table-view" style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
                       {['Officer', 'Badge / Unit', 'Status', ''].map(h => (
@@ -251,6 +251,30 @@ export default function Enroll() {
                     ))}
                   </tbody>
                 </table>
+
+                <div className="card-list-view">
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {enrollments.map((e, i) => (
+                      <div key={e.id} style={{ padding: '10px 14px', borderBottom: i < enrollments.length - 1 ? `1px solid ${COLORS.border}` : 'none' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textDark }}>{e.full_name}</div>
+                          <span style={{
+                            fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase',
+                            background: e.status === 'approved' ? COLORS.successLight : e.status === 'denied' ? COLORS.dangerLight : '#FFF8E1',
+                            color: e.status === 'approved' ? COLORS.success : e.status === 'denied' ? COLORS.danger : '#8A6000',
+                          }}>{e.status}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ fontSize: 12, color: COLORS.textLight }}>#{e.badge_number} · {e.unit}</div>
+                          <button
+                            onClick={() => handleUnenroll(e.id)}
+                            style={{ fontSize: 11, fontWeight: 700, color: COLORS.danger, background: 'none', border: 'none', cursor: 'pointer' }}
+                          >Unenroll</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )}
           </div>

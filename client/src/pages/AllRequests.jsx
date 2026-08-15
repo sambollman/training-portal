@@ -149,8 +149,8 @@ export default function AllRequests() {
         )}
       </div>
 
-      {/* Table */}
-      <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+      {/* Table (desktop) */}
+      <div className="table-view" style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
@@ -189,6 +189,34 @@ export default function AllRequests() {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Cards (mobile) — same data as the table above, shown instead of it under 480px */}
+      <div className="card-list-view">
+        {filtered.length === 0 ? (
+          <div style={{ padding: '40px 20px', textAlign: 'center', color: COLORS.textLight, background: COLORS.white, borderRadius: 10, border: `1px solid ${COLORS.border}` }}>No requests match your filters.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {filtered.map(r => (
+              <div key={r.id + r.source} style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontWeight: 600, color: COLORS.textDark, fontSize: 14 }}>{r.full_name}</div>
+                    <div style={{ fontSize: 11, color: COLORS.textLight }}>#{r.badge_number} · {r.unit}</div>
+                  </div>
+                  <StatusBadge status={r.chain_status === 'in_progress' || r.chain_status === 'returned' ? 'in_progress' : r.status} />
+                </div>
+                <div style={{ fontSize: 13, color: COLORS.textMid, marginBottom: 8 }}>{r.title}</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, fontSize: 12, color: COLORS.textMid }}>
+                  <span>{r.session_date ? new Date(r.session_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</span>
+                  <span>·</span>
+                  <span>{r.request_type === 'supervisor_enrolled' ? 'Supervisor enrolled' : 'Self-requested'}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 4, textTransform: 'uppercase', background: r.source === 'portal' ? '#E0ECF8' : '#FFF0E0', color: r.source === 'portal' ? '#1A5A8A' : '#B5621B' }}>{r.source === 'portal' ? 'Internal' : 'External'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

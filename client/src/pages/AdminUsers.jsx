@@ -199,7 +199,7 @@ export default function AdminUsers() {
         />
       </div>
 
-      <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+      <div className="table-view" style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
@@ -238,6 +238,37 @@ export default function AdminUsers() {
             })}
           </tbody>
         </table>
+      </div>
+
+      <div className="card-list-view">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {filtered.map(u => {
+            const rc = roleColor(u.role)
+            return (
+              <div key={u.id} style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.04)', opacity: u.is_active ? 1 : 0.5 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: COLORS.textDark }}>{u.first_name} {u.last_name}</div>
+                  <span style={{ background: rc.bg, color: rc.text, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase' }}>{u.role}</span>
+                </div>
+                <div style={{ fontSize: 12, color: COLORS.textMid, marginBottom: 4 }}>
+                  Badge {u.badge_number || '—'} · {u.unit || '—'} · {u.rank || '—'}
+                </div>
+                {u.post_license_number && (
+                  <div style={{ fontSize: 11, color: COLORS.textLight, marginBottom: 10 }}>ND.gov: {u.post_license_number}</div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+                  <span style={{ background: u.is_active ? COLORS.successLight : COLORS.dangerLight, color: u.is_active ? COLORS.success : COLORS.danger, fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase' }}>
+                    {u.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                  <div style={{ display: 'flex', gap: 14 }}>
+                    <button onClick={() => openEdit(u)} style={{ fontSize: 12, fontWeight: 600, color: COLORS.navy, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Edit</button>
+                    <button onClick={() => navigate(`/transcript/${u.id}`)} style={{ fontSize: 12, fontWeight: 600, color: COLORS.gold, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>Transcript</button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
 
       {modal && (

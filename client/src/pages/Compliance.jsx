@@ -68,32 +68,55 @@ export default function Compliance() {
         <div style={{ fontWeight: 600 }}>{emptyMsg}</div>
       </div>
     ) : (
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-        <thead>
-          <tr style={{ background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
-            <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Name</th>
-            <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Badge</th>
-            <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Rank</th>
-            <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Unit</th>
-            {showTraining && <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Session</th>}
-            {showStatus && <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Status</th>}
-          </tr>
-        </thead>
-        <tbody>
-          {users.map((u, i) => (
-            <tr key={u.id + (u.session_date || '')} style={{ borderBottom: i < users.length - 1 ? `1px solid ${COLORS.border}` : 'none' }}>
-              <td style={{ padding: '12px 16px', fontWeight: 600, color: COLORS.textDark, fontSize: 13 }}>{u.full_name}</td>
-              <td style={{ padding: '12px 16px', fontSize: 13, color: COLORS.textMid }}>{u.badge_number || '—'}</td>
-              <td style={{ padding: '12px 16px', fontSize: 13, color: COLORS.textMid }}>{u.rank || '—'}</td>
-              <td style={{ padding: '12px 16px', fontSize: 13, color: COLORS.textMid }}>{u.unit || '—'}</td>
-              {showTraining && <td style={{ padding: '12px 16px', fontSize: 12, color: COLORS.textMid }}>{u.training_title}{u.session_date ? ` · ${new Date(u.session_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}</td>}
-              {showStatus && <td style={{ padding: '12px 16px' }}>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase', background: u.status === 'approved' ? COLORS.successLight : '#FFF8E1', color: u.status === 'approved' ? COLORS.success : '#8A6000' }}>{u.status}</span>
-              </td>}
+      <>
+        <table className="table-view" style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ background: COLORS.bg, borderBottom: `1px solid ${COLORS.border}` }}>
+              <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Name</th>
+              <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Badge</th>
+              <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Rank</th>
+              <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Unit</th>
+              {showTraining && <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Session</th>}
+              {showStatus && <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Status</th>}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {users.map((u, i) => (
+              <tr key={u.id + (u.session_date || '')} style={{ borderBottom: i < users.length - 1 ? `1px solid ${COLORS.border}` : 'none' }}>
+                <td style={{ padding: '12px 16px', fontWeight: 600, color: COLORS.textDark, fontSize: 13 }}>{u.full_name}</td>
+                <td style={{ padding: '12px 16px', fontSize: 13, color: COLORS.textMid }}>{u.badge_number || '—'}</td>
+                <td style={{ padding: '12px 16px', fontSize: 13, color: COLORS.textMid }}>{u.rank || '—'}</td>
+                <td style={{ padding: '12px 16px', fontSize: 13, color: COLORS.textMid }}>{u.unit || '—'}</td>
+                {showTraining && <td style={{ padding: '12px 16px', fontSize: 12, color: COLORS.textMid }}>{u.training_title}{u.session_date ? ` · ${new Date(u.session_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}</td>}
+                {showStatus && <td style={{ padding: '12px 16px' }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase', background: u.status === 'approved' ? COLORS.successLight : '#FFF8E1', color: u.status === 'approved' ? COLORS.success : '#8A6000' }}>{u.status}</span>
+                </td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="card-list-view">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {users.map(u => (
+              <div key={u.id + (u.session_date || '')} style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 14, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: COLORS.textDark, marginBottom: 4 }}>{u.full_name}</div>
+                <div style={{ fontSize: 12, color: COLORS.textMid, marginBottom: showTraining || showStatus ? 8 : 0 }}>
+                  Badge {u.badge_number || '—'} · {u.rank || '—'} · {u.unit || '—'}
+                </div>
+                {showTraining && (
+                  <div style={{ fontSize: 12, color: COLORS.textMid, marginBottom: showStatus ? 8 : 0 }}>
+                    {u.training_title}{u.session_date ? ` · ${new Date(u.session_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : ''}
+                  </div>
+                )}
+                {showStatus && (
+                  <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 4, textTransform: 'uppercase', background: u.status === 'approved' ? COLORS.successLight : '#FFF8E1', color: u.status === 'approved' ? COLORS.success : '#8A6000' }}>{u.status}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </>
     )
   )
 

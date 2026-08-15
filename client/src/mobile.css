@@ -60,6 +60,25 @@
   }
 }
 
+/* ---------- Tables: swap for a stacked card list on mobile ---------- */
+/* Shared by AllRequests, AdminUsers, Compliance, Enroll, and ManageTrainings —
+   each renders both a .table-view and a .card-list-view with the same data;
+   this just decides which one is visible. */
+
+.card-list-view {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .table-view {
+    display: none;
+  }
+
+  .card-list-view {
+    display: block;
+  }
+}
+
 /* ---------- Card/header rows: "info block left, actions/badge right" ---------- */
 /* This pattern (justifyContent: space-between, no wrap) appears throughout the
    app for page headers and list-item rows. At 390px there isn't room for both

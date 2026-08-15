@@ -44,6 +44,28 @@
   }
 }
 
+/* ---------- Card/header rows: "info block left, actions/badge right" ---------- */
+/* This pattern (justifyContent: space-between, no wrap) appears throughout the
+   app for page headers and list-item rows. At 390px there isn't room for both
+   sides side-by-side, so stack them instead. */
+
+@media (max-width: 480px) {
+  .card-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px;
+  }
+
+  .card-row > * {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .card-row > *:last-child {
+    margin-left: 0 !important;
+  }
+}
+
 /* ---------- Grids: forms, filter bars, split (sidebar+detail) layouts ---------- */
 
 @media (max-width: 480px) {

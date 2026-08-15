@@ -122,7 +122,7 @@ export default function ManageTrainings() {
     <div className="split-layout" style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 20, alignItems: 'start' }}>
 
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+        <div className="card-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
           <div>
             <h1 style={{ fontSize: 22, fontWeight: 700, color: COLORS.navy, margin: '0 0 6px' }}>Manage Trainings</h1>
             <p style={{ color: COLORS.textLight, fontSize: 13, margin: 0 }}>Select a training to view enrollments and export a roster.</p>
@@ -190,7 +190,7 @@ export default function ManageTrainings() {
         ) : (
           <div>
             <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', marginBottom: 16 }}>
-              <div style={{ background: COLORS.navy, padding: '16px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="card-row" style={{ background: COLORS.navy, padding: '16px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ color: COLORS.white, fontWeight: 700, fontSize: 16 }}>{selected.title}</div>
                   <div style={{ color: COLORS.silver, fontSize: 12, marginTop: 3 }}>

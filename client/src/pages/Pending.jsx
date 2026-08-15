@@ -273,7 +273,7 @@ export default function Pending() {
                         {step.decision === 'approved' ? '✓' : step.decision === 'returned' ? '↩' : '✗'}
                       </div>
                       <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div className="card-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                           <div>
                             <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textDark }}>{step.approver_name}</div>
                             <div style={{ fontSize: 11, color: COLORS.textLight }}>{step.approver_rank}</div>

@@ -191,7 +191,7 @@ export default function Enroll() {
                     {searchResults.map((o, i) => {
                       const alreadyEnrolled = enrollments.find(e => e.officer_id === o.id)
                       return (
-                        <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: i % 2 === 0 ? COLORS.white : COLORS.bg, borderBottom: i < searchResults.length - 1 ? `1px solid ${COLORS.border}` : 'none' }}>
+                        <div key={o.id} className="card-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: i % 2 === 0 ? COLORS.white : COLORS.bg, borderBottom: i < searchResults.length - 1 ? `1px solid ${COLORS.border}` : 'none' }}>
                           <div>
                             <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textDark }}>{o.last_name}, {o.first_name}</div>
                             <div style={{ fontSize: 11, color: COLORS.textLight }}>#{o.badge_number} · {o.unit} · {o.rank}</div>

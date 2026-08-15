@@ -130,7 +130,7 @@ export default function AdminUsers() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+      <div className="card-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: COLORS.navy, margin: 0 }}>User Management</h1>
           <p style={{ color: COLORS.textLight, fontSize: 13, marginTop: 4 }}>{users.length} members · {users.filter(u => u.is_active).length} active</p>

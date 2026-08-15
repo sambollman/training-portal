@@ -211,7 +211,7 @@ export default function TrainingDetail() {
         Back to Trainings
       </button>
 
-      <div style={{ background: COLORS.navy, borderRadius: '10px 10px 0 0', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div className="card-row" style={{ background: COLORS.navy, borderRadius: '10px 10px 0 0', padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           {training.category && <div style={{ fontSize: 11, color: COLORS.silver, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>{training.category}</div>}
           <h1 style={{ color: COLORS.white, fontSize: 22, fontWeight: 700, margin: '0 0 6px' }}>{training.title}</h1>
@@ -310,7 +310,7 @@ export default function TrainingDetail() {
             <div style={{ fontSize: 11, fontWeight: 700, color: COLORS.textLight, letterSpacing: '0.07em', textTransform: 'uppercase', marginBottom: 12 }}>Currently Enrolled ({enrollments.length})</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {enrollments.map(e => (
-                <div key={e.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: COLORS.bg, borderRadius: 6 }}>
+                <div key={e.id} className="card-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: COLORS.bg, borderRadius: 6 }}>
                   <div>
                     <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.textDark }}>{e.full_name}</div>
                     <div style={{ fontSize: 11, color: COLORS.textLight }}>#{e.badge_number} · {e.unit}</div>

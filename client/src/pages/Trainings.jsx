@@ -94,7 +94,7 @@ export default function Trainings() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div className="card-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 700, color: COLORS.navy, margin: 0 }}>Available Trainings</h1>
           <p style={{ color: COLORS.textLight, fontSize: 13, marginTop: 4 }}>Browse upcoming sessions and request to attend.</p>

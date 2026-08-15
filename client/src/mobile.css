@@ -44,6 +44,22 @@
   }
 }
 
+/* ---------- Calendar: swap 7-col grid for an agenda list on mobile ---------- */
+
+.calendar-agenda-view {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .calendar-grid-view {
+    display: none;
+  }
+
+  .calendar-agenda-view {
+    display: block;
+  }
+}
+
 /* ---------- Card/header rows: "info block left, actions/badge right" ---------- */
 /* This pattern (justifyContent: space-between, no wrap) appears throughout the
    app for page headers and list-item rows. At 390px there isn't room for both

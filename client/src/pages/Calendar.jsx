@@ -195,7 +195,7 @@ export default function Calendar() {
         </div>
       </div>
 
-      <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+      <div className="calendar-grid-view" style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: `1px solid ${COLORS.border}` }}>
           {DAYS.map(d => (
             <div key={d} style={{ padding: '10px', textAlign: 'center', fontSize: 11, fontWeight: 700, color: COLORS.textLight, textTransform: 'uppercase', letterSpacing: '0.06em', background: COLORS.bg }}>{d}</div>
@@ -253,6 +253,64 @@ export default function Calendar() {
           })}
         </div>
       </div>
+
+      {/* Mobile agenda view — same event data, list layout instead of a 7-col grid.
+          Hidden on desktop, shown in place of .calendar-grid-view under 480px (see mobile.css). */}
+      <div className="calendar-agenda-view">
+        {(() => {
+          const daysWithEvents = []
+          for (let d = 1; d <= daysInMonth; d++) {
+            const dayEvents = getEventsForDay(d)
+            if (dayEvents.length > 0) daysWithEvents.push({ day: d, events: dayEvents })
+          }
+          if (daysWithEvents.length === 0) {
+            return (
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: COLORS.textLight, background: COLORS.white, borderRadius: 10, border: `1px solid ${COLORS.border}` }}>
+                No trainings scheduled this month.
+              </div>
+            )
+          }
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {daysWithEvents.map(({ day, events }) => {
+                const dateObj = new Date(currentYear, currentMonth, day)
+                const todayFlag = isToday(day)
+                return (
+                  <div key={day} style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                    <div style={{ padding: '10px 14px', background: todayFlag ? COLORS.navy : COLORS.bg, borderBottom: `1px solid ${COLORS.border}`, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: todayFlag ? COLORS.white : COLORS.textDark }}>
+                        {dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                      </span>
+                      {todayFlag && <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.gold, textTransform: 'uppercase' }}>Today</span>}
+                    </div>
+                    <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {events.map((event, ei) => {
+                        const ec = EVENT_COLORS[event.type]
+                        return (
+                          <div key={ei} onClick={(e) => {
+                            if (event.source === 'portal') {
+                              navigate(`/trainings/${event.id}`)
+                            } else if (event.source === 'specialized') {
+                              setPopoverPos({ x: e.clientX, y: e.clientY })
+                              setSelectedSpecialized(event.data || specialized.find(s => s.id === event.id))
+                            }
+                          }} style={{
+                            fontSize: 13, fontWeight: 600, padding: '9px 12px', borderRadius: 6,
+                            background: ec.bg, color: ec.text,
+                            border: event.enrolled ? `2px solid ${ec.border}` : `1px solid ${ec.border}44`,
+                            cursor: event.source === 'portal' ? 'pointer' : 'default',
+                          }}>{event.enrolled ? '✓ ' : ''}{event.title}</div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
+      </div>
+
 
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: 20 }}>

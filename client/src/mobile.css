@@ -9,6 +9,19 @@
   Android phones) without affecting iPad/tablet layouts.
 */
 
+/* ---------- Prevent iOS Safari's auto-zoom-on-focus ---------- */
+/* iOS Safari zooms the whole page in when a form field's font-size is
+   under 16px, so the user can read what they're typing. That zoomed-in
+   state can persist across a redirect (e.g. login -> dashboard) until
+   manually pinched back out. Most inputs in this app are 12-14px on
+   desktop for density; bumping just the mobile size to 16px avoids the
+   zoom entirely without touching desktop styling. */
+@media (max-width: 480px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* ---------- Header (logo + user info) ---------- */
 
 @media (max-width: 480px) {

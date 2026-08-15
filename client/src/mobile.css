@@ -1,0 +1,71 @@
+/*
+  Mobile-only overrides.
+  Everything in this file is scoped to @media (max-width: 480px), so it
+  changes NOTHING on desktop/tablet. Import this once in main.jsx, after
+  index.css, so these rules win.
+
+  Target: iPhone 13 and newer (390px+ CSS width). We use 480px as the
+  breakpoint to give a little headroom (e.g. iPhone in a case, small
+  Android phones) without affecting iPad/tablet layouts.
+*/
+
+/* ---------- Nav / hamburger menu (Layout.jsx) ---------- */
+
+.hamburger-btn {
+  display: none;
+}
+
+.nav-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 480px) {
+  .hamburger-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 4px 16px;
+  }
+
+  .hamburger-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #0D1B2A;
+  }
+
+  .nav-rows {
+    display: none;
+  }
+
+  .nav-rows.open {
+    display: flex;
+  }
+
+  .nav-row {
+    flex-direction: column;
+    padding: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+  }
+
+  .nav-row a {
+    padding: 13px 16px !important;
+    border-bottom: 1px solid #EEF1F5;
+    border-left: 3px solid transparent;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .nav-row a.active,
+  .nav-row a[aria-current="page"] {
+    background: #F7F9FC;
+  }
+}

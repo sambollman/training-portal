@@ -15,6 +15,8 @@ export default function Layout({ children }) {
   const [pendingCount, setPendingCount] = useState(0)
   const isSupervisor = user?.role === 'supervisor' || user?.role === 'coordinator'
   const [returnedCount, setReturnedCount] = useState(0)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const closeMobileMenu = () => setMobileMenuOpen(false)
 
   useEffect(() => {
     if (!isSupervisor) return
@@ -64,6 +66,11 @@ export default function Layout({ children }) {
     transition: 'all 0.15s',
   })
 
+  // NavLink already gets navStyle for desktop coloring. On mobile, mobile.css
+  // targets `.nav-row a.active` instead (inline styles can't be overridden
+  // by a stylesheet's media query), so we also pass a className.
+  const navClassName = ({ isActive }) => (isActive ? 'active' : '')
+
   
   return (
     <div style={{ minHeight: '100vh', background: COLORS.bg, fontFamily: 'system-ui, sans-serif' }}>
@@ -91,40 +98,54 @@ export default function Layout({ children }) {
       </header>
 
       <nav style={{ background: COLORS.white, borderBottom: `1px solid ${COLORS.border}`, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', display: 'flex', borderBottom: isSupervisor ? `1px solid ${COLORS.border}` : 'none' }}>
-          <NavLink to="/trainings" style={navStyle}>Available Trainings</NavLink>
-          <NavLink to="/calendar" style={navStyle}>Calendar</NavLink>
-          <NavLink to="/my-schedule" style={navStyle}>
-            My Schedule
-            {returnedCount > 0 && (
-              <span style={{ marginLeft: 6, background: '#B5621B', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 10 }}>{returnedCount}</span>
-            )}
-          </NavLink>
-          <NavLink to="/transcript" style={navStyle}>Transcript</NavLink>
-          <NavLink to="/request-training" style={navStyle}>Request a Training</NavLink>
+        {/* Hamburger toggle — hidden on desktop, shown under 480px via mobile.css */}
+        <div className="hamburger-row">
+          <button
+            className="hamburger-btn"
+            onClick={() => setMobileMenuOpen(o => !o)}
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileMenuOpen}
+          >
+            {mobileMenuOpen ? '✕' : '☰'}
+          </button>
         </div>
-        {isSupervisor && (
-          <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', display: 'flex' }}>
-            <NavLink to="/pending" style={navStyle}>
-              Pending Approvals
-              {pendingCount > 0 && (
-                <span style={{ marginLeft: 6, background: '#9B2335', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 10 }}>{pendingCount}</span>
+
+        <div className={`nav-rows${mobileMenuOpen ? ' open' : ''}`}>
+          <div className="nav-row" style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', display: 'flex', borderBottom: isSupervisor ? `1px solid ${COLORS.border}` : 'none' }}>
+            <NavLink to="/trainings" style={navStyle} className={navClassName} onClick={closeMobileMenu}>Available Trainings</NavLink>
+            <NavLink to="/calendar" style={navStyle} className={navClassName} onClick={closeMobileMenu}>Calendar</NavLink>
+            <NavLink to="/my-schedule" style={navStyle} className={navClassName} onClick={closeMobileMenu}>
+              My Schedule
+              {returnedCount > 0 && (
+                <span style={{ marginLeft: 6, background: '#B5621B', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 10 }}>{returnedCount}</span>
               )}
             </NavLink>
-            <NavLink to="/enroll" style={navStyle}>Enroll Officers</NavLink>
-            <NavLink to="/all-requests" style={navStyle}>All Requests</NavLink>
-            <NavLink to="/compliance" style={navStyle}>Compliance</NavLink>
-            {(user?.role === 'coordinator' || user?.role === 'instructor') && (
-              <NavLink to="/manage-trainings" style={navStyle}>Manage Trainings</NavLink>
-            )}
-            {user?.role === 'coordinator' && (
-              <>
-                <NavLink to="/admin/users" style={navStyle}>User Management</NavLink>
-                <NavLink to="/import-training" style={navStyle}>Import Records</NavLink>
-              </>
-            )}
+            <NavLink to="/transcript" style={navStyle} className={navClassName} onClick={closeMobileMenu}>Transcript</NavLink>
+            <NavLink to="/request-training" style={navStyle} className={navClassName} onClick={closeMobileMenu}>Request a Training</NavLink>
           </div>
-        )}
+          {isSupervisor && (
+            <div className="nav-row second" style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', display: 'flex' }}>
+              <NavLink to="/pending" style={navStyle} className={navClassName} onClick={closeMobileMenu}>
+                Pending Approvals
+                {pendingCount > 0 && (
+                  <span style={{ marginLeft: 6, background: '#9B2335', color: '#fff', fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 10 }}>{pendingCount}</span>
+                )}
+              </NavLink>
+              <NavLink to="/enroll" style={navStyle} className={navClassName} onClick={closeMobileMenu}>Enroll Officers</NavLink>
+              <NavLink to="/all-requests" style={navStyle} className={navClassName} onClick={closeMobileMenu}>All Requests</NavLink>
+              <NavLink to="/compliance" style={navStyle} className={navClassName} onClick={closeMobileMenu}>Compliance</NavLink>
+              {(user?.role === 'coordinator' || user?.role === 'instructor') && (
+                <NavLink to="/manage-trainings" style={navStyle} className={navClassName} onClick={closeMobileMenu}>Manage Trainings</NavLink>
+              )}
+              {user?.role === 'coordinator' && (
+                <>
+                  <NavLink to="/admin/users" style={navStyle} className={navClassName} onClick={closeMobileMenu}>User Management</NavLink>
+                  <NavLink to="/import-training" style={navStyle} className={navClassName} onClick={closeMobileMenu}>Import Records</NavLink>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </nav>
 
       <main style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 24px' }}>

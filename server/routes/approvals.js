@@ -2,6 +2,15 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/connection');
 const { requireAuth } = require('../middleware/auth');
+const { sendMail } = require('../utils/mailer');
+
+// Postgres returns DATE columns as JS Date objects; format them plainly for email text.
+function fmtDate(d) {
+  if (!d) return null;
+  const date = d instanceof Date ? d : new Date(d);
+  if (isNaN(date.getTime())) return null;
+  return date.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 // Get list of valid first approvers for an officer
 // If officer is sergeant/manager, returns lieutenants
@@ -124,6 +133,14 @@ router.post('/submit', requireAuth, async (req, res) => {
       approver.rows[0].rank
     ])
 
+    sendMail({
+      to: approver.rows[0].email,
+      subject: `Training request awaiting your approval - ${t.title}`,
+      text: `${req.user.full_name} has requested to attend "${t.title}"` +
+        (fmtDate(t.session_date) ? ` on ${fmtDate(t.session_date)}` : '') +
+        `.\n\nLog in to the Training Portal to review and approve or deny this request.`,
+    })
+
     res.status(201).json({ request: enrollmentRequest })
   } catch (err) {
     if (err.code === '23505') {
@@ -233,9 +250,12 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
 
     // Get the enrollment request and training
     const requestResult = await db.query(`
-      SELECT er.*, t.is_out_of_state, t.training_type
+      SELECT er.*, t.is_out_of_state, t.training_type, t.title as training_title,
+        to_char(t.session_date, 'YYYY-MM-DD') as session_date,
+        o.full_name as officer_name, o.email as officer_email
       FROM enrollment_requests er
       JOIN trainings t ON er.training_id = t.id
+      JOIN users o ON er.officer_id = o.id
       WHERE er.id = $1
     `, [step.enrollment_request_id])
 
@@ -276,6 +296,14 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
         WHERE id = $2
       `, [comment || null, req.params.stepId]);
 
+      sendMail({
+        to: enrollmentRequest.officer_email,
+        subject: `Action needed on your training request - ${enrollmentRequest.training_title}`,
+        text: `${req.user.full_name} has returned your request for "${enrollmentRequest.training_title}" for more information.\n\n` +
+          (comment ? `Their comment: ${comment}\n\n` : '') +
+          `Log in to the Training Portal to review and resubmit your request.`,
+      })
+
       return res.json({ ok: true, is_final: false, returned: true });
     }
 
@@ -285,6 +313,19 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
           status = $1, chain_status = 'complete', acted_on_at = NOW(), acted_on_by = $2
         WHERE id = $3
       `, [decision, req.user.id, step.enrollment_request_id])
+
+      sendMail({
+        to: enrollmentRequest.officer_email,
+        subject: `Your training request has been ${decision} - ${enrollmentRequest.training_title}`,
+        text: decision === 'approved'
+          ? `Good news - your request to attend "${enrollmentRequest.training_title}"` +
+            (fmtDate(enrollmentRequest.session_date) ? ` on ${fmtDate(enrollmentRequest.session_date)}` : '') +
+            ` has been approved.` +
+            (comment ? `\n\nComment: ${comment}` : '')
+          : `Your request to attend "${enrollmentRequest.training_title}" was not approved.` +
+            (comment ? `\n\nReason: ${comment}` : '') +
+            `\n\nLog in to the Training Portal for details.`,
+      })
     } else if (shouldAutoRouteToCoordinator) {
       const coordinator = await db.query(
         "SELECT * FROM users WHERE role = 'coordinator' AND is_active = true LIMIT 1"
@@ -308,6 +349,13 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
           UPDATE enrollment_requests SET chain_status = 'in_progress', supervisor_id = $1
           WHERE id = $2
         `, [coordinator.rows[0].id, step.enrollment_request_id])
+
+        sendMail({
+          to: coordinator.rows[0].email,
+          subject: `Training request awaiting your approval - ${enrollmentRequest.training_title}`,
+          text: `${enrollmentRequest.officer_name}'s request to attend "${enrollmentRequest.training_title}" has been approved up the chain and now needs your final review.\n\n` +
+            `Log in to the Training Portal to review and approve or deny this request.`,
+        })
       }
     } else if (next_approver_id) {
       const nextApprover = await db.query('SELECT * FROM users WHERE id = $1', [next_approver_id])
@@ -330,6 +378,13 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
         UPDATE enrollment_requests SET chain_status = 'in_progress', supervisor_id = $1
         WHERE id = $2
       `, [next_approver_id, step.enrollment_request_id])
+
+      sendMail({
+        to: nextApprover.rows[0].email,
+        subject: `Training request awaiting your approval - ${enrollmentRequest.training_title}`,
+        text: `${enrollmentRequest.officer_name}'s request to attend "${enrollmentRequest.training_title}" needs your review.\n\n` +
+          `Log in to the Training Portal to review and approve or deny this request.`,
+      })
     }
 
     
@@ -468,6 +523,16 @@ router.post('/respond/:requestId', requireAuth, async (req, res) => {
         returnedStep.rows[0].approver_name,
         returnedStep.rows[0].approver_rank
       ]);
+
+      const approverInfo = await db.query('SELECT email FROM users WHERE id = $1', [returnedStep.rows[0].approver_id]);
+      const trainingInfo = await db.query('SELECT title FROM trainings WHERE id = $1', [request.rows[0].training_id]);
+
+      sendMail({
+        to: approverInfo.rows[0]?.email,
+        subject: `Updated training request ready for your review - ${trainingInfo.rows[0]?.title || ''}`,
+        text: `${req.user.full_name} has responded to your request for more information on "${trainingInfo.rows[0]?.title || 'their training request'}".\n\n` +
+          `Log in to the Training Portal to review the updated request.`,
+      })
     }
 
     res.json({ ok: true });

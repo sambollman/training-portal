@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/connection');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { sendMail } = require('../utils/mailer');
 
 // GET /api/requests - officer sees their own requests
 router.get('/', requireAuth, async (req, res) => {
@@ -157,11 +158,24 @@ router.post('/enroll', requireAuth, requireRole('supervisor', 'coordinator'), as
       return res.status(400).json({ error: 'Training is full' });
     }
 
+    const officer = await db.query('SELECT full_name, email FROM users WHERE id = $1', [officer_id]);
+
     const result = await db.query(`
       INSERT INTO enrollment_requests (training_id, officer_id, supervisor_id, request_type, status)
       VALUES ($1, $2, $3, 'supervisor_enrolled', 'approved')
       RETURNING *
     `, [training_id, officer_id, req.user.id]);
+
+    if (officer.rows[0]) {
+      sendMail({
+        to: officer.rows[0].email,
+        subject: `You've been enrolled in a training - ${training.rows[0].title}`,
+        text: `Hi ${officer.rows[0].full_name.split(' ')[0]},\n\n` +
+          `${req.user.full_name} has enrolled you in "${training.rows[0].title}"` +
+          (training.rows[0].session_date ? ` on ${new Date(training.rows[0].session_date).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}` : '') +
+          `.\n\nLog in to the Training Portal for details.`,
+      });
+    }
 
     res.status(201).json({ request: result.rows[0] });
   } catch (err) {

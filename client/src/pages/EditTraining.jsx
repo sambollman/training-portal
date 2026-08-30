@@ -92,7 +92,7 @@ export default function EditTraining() {
     e.preventDefault()
     setError('')
 
-    if (!form.no_seat_limit && !form.seat_capacity) {
+    if (form.training_type === 'internal' && !form.no_seat_limit && !form.seat_capacity) {
       setError('Enter a seat capacity, or check "No seat limit"')
       return
     }

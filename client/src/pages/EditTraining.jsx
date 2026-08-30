@@ -91,6 +91,12 @@ export default function EditTraining() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+
+    if (!form.no_seat_limit && !form.seat_capacity) {
+      setError('Enter a seat capacity, or check "No seat limit"')
+      return
+    }
+
     setSaving(true)
     try {
       const payload = {

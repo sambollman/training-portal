@@ -242,7 +242,7 @@ export default function TrainingDetail() {
         </div>
 
         <div className="grid-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>
-          <InfoBlock label="Seats" value={training.no_seat_limit ? 'No limit' : `${training.enrolled_count} / ${training.seat_capacity} enrolled`} />
+          <InfoBlock label="Seats" value={training.no_seat_limit || !training.seat_capacity ? 'No limit' : `${training.enrolled_count} / ${training.seat_capacity} enrolled`} />
           <InfoBlock label="Cost per Attendee" value={training.cost ? `$${parseFloat(training.cost).toFixed(2)}` : 'Free'} />
         </div>
 

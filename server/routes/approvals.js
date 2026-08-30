@@ -19,12 +19,13 @@ router.get('/first-approvers', requireAuth, async (req, res) => {
   try {
     const officerRank = req.user.rank?.toLowerCase()
     const trainingType = req.query.type // 'internal' or 'external'
+    const isCivilian = officerRank === 'civilian'
     const isSgtOrManager = officerRank === 'sergeant' || officerRank === 'manager'
-    
+
     let ranks
     if (trainingType === 'internal') {
-      // Internal trainings always go to Lt
-      ranks = ['Lieutenant']
+      // Internal trainings: civilians route to a Manager, everyone else to a Lieutenant
+      ranks = isCivilian ? ['Manager'] : ['Lieutenant']
     } else if (isSgtOrManager) {
       ranks = ['Lieutenant']
     } else {
@@ -248,11 +249,11 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
 
     const step = stepResult.rows[0]
 
-    // Get the enrollment request and training
+    // Get the enrollment request, training, and officer info
     const requestResult = await db.query(`
       SELECT er.*, t.is_out_of_state, t.training_type, t.title as training_title,
         to_char(t.session_date, 'YYYY-MM-DD') as session_date,
-        o.full_name as officer_name, o.email as officer_email
+        o.full_name as officer_name, o.email as officer_email, o.rank as officer_rank
       FROM enrollment_requests er
       JOIN trainings t ON er.training_id = t.id
       JOIN users o ON er.officer_id = o.id
@@ -262,21 +263,19 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
     const enrollmentRequest = requestResult.rows[0]
     const training = enrollmentRequest
 
-    // Determine if this is the final step
+    // Determine if this is the final step.
+    // Internal: officers finalize at Lieutenant, civilians finalize at Manager.
+    // External: finalizes at Captain (in-state) or Assistant Chief (out-of-state).
+    // The coordinator is notified by email at that point - it is not a
+    // required approval step, per the actual approval policy.
     const currentRank = req.user.rank?.toLowerCase()
-    const currentRole = req.user.role?.toLowerCase()
     const isOutOfState = training.is_out_of_state
-    const isExternal = training.training_type === 'external'
     const isInternal = training.training_type === 'internal'
+    const isCivilianRequester = training.officer_rank?.toLowerCase() === 'civilian'
 
     const isFinalStep = isInternal
-      ? currentRank === 'lieutenant'
-      : currentRank === 'coordinator'
-
-    const shouldAutoRouteToCoordinator = isExternal && (
-      (currentRank === 'captain' && !isOutOfState) ||
-      currentRank === 'assistant chief'
-    )
+      ? (isCivilianRequester ? currentRank === 'manager' : currentRank === 'lieutenant')
+      : ((currentRank === 'captain' && !isOutOfState) || currentRank === 'assistant chief')
 
     // Update the current step
     await db.query(`
@@ -326,36 +325,21 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
             (comment ? `\n\nReason: ${comment}` : '') +
             `\n\nLog in to the Training Portal for details.`,
       })
-    } else if (shouldAutoRouteToCoordinator) {
-      const coordinator = await db.query(
-        "SELECT * FROM users WHERE role = 'coordinator' AND is_active = true LIMIT 1"
-      )
-      if (coordinator.rows[0]) {
-        const maxStep = await db.query(
-          'SELECT MAX(step_number) as max FROM approval_steps WHERE enrollment_request_id = $1',
-          [step.enrollment_request_id]
-        )
-        await db.query(`
-          INSERT INTO approval_steps (enrollment_request_id, step_number, approver_id, approver_name, approver_rank)
-          VALUES ($1, $2, $3, $4, $5)
-        `, [
-          step.enrollment_request_id,
-          maxStep.rows[0].max + 1,
-          coordinator.rows[0].id,
-          coordinator.rows[0].full_name,
-          'coordinator'
-        ])
-        await db.query(`
-          UPDATE enrollment_requests SET chain_status = 'in_progress', supervisor_id = $1
-          WHERE id = $2
-        `, [coordinator.rows[0].id, step.enrollment_request_id])
 
-        sendMail({
-          to: coordinator.rows[0].email,
-          subject: `Training request awaiting your approval - ${enrollmentRequest.training_title}`,
-          text: `${enrollmentRequest.officer_name}'s request to attend "${enrollmentRequest.training_title}" has been approved up the chain and now needs your final review.\n\n` +
-            `Log in to the Training Portal to review and approve or deny this request.`,
-        })
+      // For the external chain, loop in the coordinator as an FYI - not a
+      // required action, so no approval step is created for them.
+      if (!isInternal) {
+        const coordinator = await db.query(
+          "SELECT full_name, email FROM users WHERE role = 'coordinator' AND is_active = true LIMIT 1"
+        )
+        if (coordinator.rows[0]) {
+          sendMail({
+            to: coordinator.rows[0].email,
+            subject: `Training request ${decision} - ${enrollmentRequest.training_title}`,
+            text: `FYI - ${enrollmentRequest.officer_name}'s request for "${enrollmentRequest.training_title}" was ${decision} by ${req.user.full_name} (${req.user.rank}).\n\n` +
+              `No action is needed from you; this is for your records.`,
+          })
+        }
       }
     } else if (next_approver_id) {
       const nextApprover = await db.query('SELECT * FROM users WHERE id = $1', [next_approver_id])

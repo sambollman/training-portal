@@ -2,6 +2,14 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/connection');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { sendMail } = require('../utils/mailer');
+
+function fmtDate(d) {
+  if (!d) return null;
+  const date = d instanceof Date ? d : new Date(d);
+  if (isNaN(date.getTime())) return null;
+  return date.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 // Submit a new external training request
 router.post('/submit', requireAuth, async (req, res) => {
@@ -47,6 +55,14 @@ router.post('/submit', requireAuth, async (req, res) => {
       approver.rows[0].full_name,
       approver.rows[0].rank
     ]);
+
+    sendMail({
+      to: approver.rows[0].email,
+      subject: `External training request awaiting your approval - ${training_name}`,
+      text: `${req.user.full_name} has requested to attend "${training_name}"` +
+        (fmtDate(start_date) ? ` on ${fmtDate(start_date)}` : '') +
+        `.\n\nLog in to the Training Portal to review and approve or deny this request.`,
+    })
 
     res.status(201).json({ request: request.rows[0] });
   } catch (err) {
@@ -161,19 +177,20 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
 
     const step = stepResult.rows[0];
 
-    const requestResult = await db.query(
-      'SELECT * FROM external_training_requests WHERE id = $1',
-      [step.external_request_id]
-    );
+    const requestResult = await db.query(`
+      SELECT etr.*, o.full_name as officer_name, o.email as officer_email
+      FROM external_training_requests etr
+      JOIN users o ON etr.officer_id = o.id
+      WHERE etr.id = $1
+    `, [step.external_request_id]);
     const externalRequest = requestResult.rows[0];
     const currentRank = req.user.rank?.toLowerCase()
-    const currentRole = req.user.role?.toLowerCase()
     const isOutOfState = externalRequest.is_out_of_state
-    const isFinalStep = currentRole === 'coordinator'
-    const shouldAutoRouteToCoordinator = (
-      (currentRank === 'captain' && !isOutOfState) ||
-      currentRank === 'assistant chief'
-    )
+
+    // Finalizes at Captain (in-state) or Assistant Chief (out-of-state).
+    // The coordinator is notified by email at that point - it is not a
+    // required approval step, per the actual approval policy.
+    const isFinalStep = (currentRank === 'captain' && !isOutOfState) || currentRank === 'assistant chief'
 
     await db.query(`
       UPDATE approval_steps SET
@@ -187,6 +204,15 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
         UPDATE external_training_requests SET chain_status = 'returned'
         WHERE id = $1
       `, [step.external_request_id]);
+
+      sendMail({
+        to: externalRequest.officer_email,
+        subject: `Action needed on your training request - ${externalRequest.training_name}`,
+        text: `${req.user.full_name} has returned your request for "${externalRequest.training_name}" for more information.\n\n` +
+          (comment ? `Their comment: ${comment}\n\n` : '') +
+          `Log in to the Training Portal to review and resubmit your request.`,
+      })
+
       return res.json({ ok: true, is_final: false, returned: true });
     }
 
@@ -196,29 +222,30 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
           status = $1, chain_status = 'complete'
         WHERE id = $2
       `, [decision, step.external_request_id]);
-    } else if (shouldAutoRouteToCoordinator) {
+
+      sendMail({
+        to: externalRequest.officer_email,
+        subject: `Your training request has been ${decision} - ${externalRequest.training_name}`,
+        text: decision === 'approved'
+          ? `Good news - your request to attend "${externalRequest.training_name}"` +
+            (fmtDate(externalRequest.start_date) ? ` on ${fmtDate(externalRequest.start_date)}` : '') +
+            ` has been approved.` +
+            (comment ? `\n\nComment: ${comment}` : '')
+          : `Your request to attend "${externalRequest.training_name}" was not approved.` +
+            (comment ? `\n\nReason: ${comment}` : '') +
+            `\n\nLog in to the Training Portal for details.`,
+      })
+
       const coordinator = await db.query(
-        "SELECT * FROM users WHERE role = 'coordinator' AND is_active = true LIMIT 1"
+        "SELECT full_name, email FROM users WHERE role = 'coordinator' AND is_active = true LIMIT 1"
       );
       if (coordinator.rows[0]) {
-        const maxStep = await db.query(
-          'SELECT MAX(step_number) as max FROM approval_steps WHERE external_request_id = $1',
-          [step.external_request_id]
-        );
-        await db.query(`
-          INSERT INTO approval_steps (external_request_id, step_number, approver_id, approver_name, approver_rank)
-          VALUES ($1, $2, $3, $4, $5)
-        `, [
-          step.external_request_id,
-          maxStep.rows[0].max + 1,
-          coordinator.rows[0].id,
-          coordinator.rows[0].full_name,
-          'coordinator'
-        ]);
-        await db.query(`
-          UPDATE external_training_requests SET chain_status = 'in_progress'
-          WHERE id = $1
-        `, [step.external_request_id]);
+        sendMail({
+          to: coordinator.rows[0].email,
+          subject: `External training request ${decision} - ${externalRequest.training_name}`,
+          text: `FYI - ${externalRequest.officer_name}'s request for "${externalRequest.training_name}" was ${decision} by ${req.user.full_name} (${req.user.rank}).\n\n` +
+            `No action is needed from you; this is for your records.`,
+        })
       }
     } else if (next_approver_id) {
       const nextApprover = await db.query('SELECT * FROM users WHERE id = $1', [next_approver_id]);
@@ -243,6 +270,13 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
         UPDATE external_training_requests SET chain_status = 'in_progress'
         WHERE id = $1
       `, [step.external_request_id]);
+
+      sendMail({
+        to: nextApprover.rows[0].email,
+        subject: `Training request awaiting your approval - ${externalRequest.training_name}`,
+        text: `${externalRequest.officer_name}'s request to attend "${externalRequest.training_name}" needs your review.\n\n` +
+          `Log in to the Training Portal to review and approve or deny this request.`,
+      })
     }
 
     // Insert additional approver if requested
@@ -369,6 +403,15 @@ router.post('/respond/:requestId', requireAuth, async (req, res) => {
         returnedStep.rows[0].approver_name,
         returnedStep.rows[0].approver_rank
       ]);
+
+      const approverInfo = await db.query('SELECT email FROM users WHERE id = $1', [returnedStep.rows[0].approver_id]);
+
+      sendMail({
+        to: approverInfo.rows[0]?.email,
+        subject: `Updated training request ready for your review - ${request.rows[0].training_name}`,
+        text: `${req.user.full_name} has responded to your request for more information on "${request.rows[0].training_name}".\n\n` +
+          `Log in to the Training Portal to review the updated request.`,
+      })
     }
 
     res.json({ ok: true });
@@ -398,8 +441,6 @@ router.delete('/:id', requireAuth, async (req, res) => {
 router.get('/all', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
   try {
     let query, params;
-    const fullHistory = req.query.fullHistory === 'true';
-    const recentClause = `(etr.start_date IS NULL OR etr.start_date >= CURRENT_DATE - 90 OR etr.chain_status <> 'complete')`;
 
     if (req.user.role === 'coordinator') {
       query = `
@@ -409,9 +450,7 @@ router.get('/all', requireAuth, requireRole('supervisor', 'coordinator'), async 
           u.full_name as officer_name, u.badge_number, u.unit
         FROM external_training_requests etr
         JOIN users u ON etr.officer_id = u.id
-        ${fullHistory ? '' : `WHERE ${recentClause}`}
         ORDER BY etr.created_at DESC
-        LIMIT 1000
       `;
       params = [];
     } else {
@@ -424,15 +463,13 @@ router.get('/all', requireAuth, requireRole('supervisor', 'coordinator'), async 
         JOIN users u ON etr.officer_id = u.id
         LEFT JOIN approval_steps ap ON ap.external_request_id = etr.id
         WHERE ap.approver_id = $1
-        ${fullHistory ? '' : `AND ${recentClause}`}
         ORDER BY etr.created_at DESC
-        LIMIT 1000
       `;
       params = [req.user.id];
     }
 
     const result = await db.query(query, params);
-    res.json({ requests: result.rows, fullHistory });
+    res.json({ requests: result.rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch external requests' });

@@ -26,11 +26,15 @@ async function upsertUser(username) {
   const existing = await db('users').where({ username }).first();
 
   if (existing) {
-    const [updated] = await db('users')
-      .where({ username })
-      .update({ updated_at: db.fn.now() })
-      .returning('*');
-    return updated;
+    // Note: can't use .returning() here. SQL Server disallows OUTPUT on
+    // an UPDATE statement against a table that has a matching AFTER
+    // UPDATE trigger (users does, for the updated_at auto-timestamp —
+    // see the initial schema migration) unless the output is routed
+    // into a separate table variable. Simplest fix: do the update, then
+    // fetch the row separately. This only applies to UPDATE — INSERT is
+    // unaffected since there's no AFTER INSERT trigger on this table.
+    await db('users').where({ username }).update({ updated_at: db.fn.now() });
+    return db('users').where({ username }).first();
   }
 
   try {

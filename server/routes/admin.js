@@ -90,7 +90,13 @@ router.put('/users/:id', requireAuth, requireRole('coordinator'), async (req, re
   const full_name = `${first_name} ${last_name}`;
 
   try {
-    const [user] = await db('users')
+    // Note: can't use .returning() here — same SQL Server restriction as
+    // in middleware/auth.js's upsertUser (OUTPUT isn't allowed on an
+    // UPDATE against a table with a matching AFTER UPDATE trigger, and
+    // users has one for updated_at). Without .returning(), Knex reports
+    // the number of affected rows instead, which doubles as our
+    // not-found check, then we fetch the updated row separately.
+    const affectedRows = await db('users')
       .where({ id: req.params.id })
       .update({
         first_name,
@@ -104,13 +110,13 @@ router.put('/users/:id', requireAuth, requireRole('coordinator'), async (req, re
         role,
         supervisor_id: supervisor_id || null,
         is_active: is_active !== false,
-      })
-      .returning('*');
+      });
 
-    if (!user) {
+    if (affectedRows === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
 
+    const user = await db('users').where({ id: req.params.id }).first();
     res.json({ user });
   } catch (err) {
     console.error(err);

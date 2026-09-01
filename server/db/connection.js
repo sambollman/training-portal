@@ -7,6 +7,25 @@
 // All connection details come from environment variables — see
 // server/env.example for the full list. Nothing here should ever contain
 // a hardcoded server name, username, or password.
+//
+// IMPORTANT — a SQL Server-specific gotcha that affects several route
+// files: `users`, `trainings`, and `enrollment_requests` each have an
+// AFTER UPDATE trigger (see the initial schema migration) that keeps
+// updated_at current. SQL Server does not allow an UPDATE statement to
+// use an OUTPUT clause (which is what Knex's .returning() compiles to)
+// against a table that has a matching trigger, unless the output is
+// routed into a separate table variable — Knex doesn't support that
+// automatically. Trying to chain .returning() onto an .update() for
+// these three tables will fail with error number 334 ("cannot have any
+// enabled triggers if the statement contains an OUTPUT clause without
+// INTO clause").
+//
+// The pattern used throughout this codebase to work around it: run the
+// .update() without .returning() (Knex reports the number of affected
+// rows instead, which is also a handy not-found check), then do a
+// separate .where(...).first() to fetch the row afterward. This
+// restriction is UPDATE-specific — .returning() on an INSERT into these
+// same tables is fine, since the triggers are AFTER UPDATE only.
 const knex = require('knex');
 
 const db = knex({

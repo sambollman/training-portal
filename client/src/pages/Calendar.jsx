@@ -18,6 +18,19 @@ const EVENT_COLORS = {
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+
+// For the "1st & 3rd [Weekday]" recurrence dropdown option — shows the
+// actual weekday implied by whatever start date/time has been entered,
+// falling back to a generic placeholder until one is picked. The value
+// comes straight from a <input type="datetime-local">, so it's already
+// in the browser's local time — no timezone conversion needed here,
+// just reading which day of the week it falls on.
+function startWeekdayLabel(startDatetimeLocal) {
+  if (!startDatetimeLocal) return '(same weekday)'
+  const d = new Date(startDatetimeLocal)
+  if (isNaN(d.getTime())) return '(same weekday)'
+  return DAYS[d.getDay()]
+}
 const UNIT_TYPES = ['SWAT', 'CMT', 'K9']
 
 const inputStyle = {
@@ -368,6 +381,8 @@ export default function Calendar() {
                         <option value="weekly">Weekly</option>
                         <option value="biweekly">Every 2 Weeks</option>
                         <option value="monthly">Monthly</option>
+                        <option value="first_third">1st & 3rd {startWeekdayLabel(form.start_datetime)} of month</option>
+                        <option value="second_fourth">2nd & 4th {startWeekdayLabel(form.start_datetime)} of month</option>
                       </select>
                     </div>
                     <div>

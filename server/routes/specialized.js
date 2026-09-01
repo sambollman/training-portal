@@ -140,36 +140,129 @@ router.delete('/:id', requireAuth, requireRole('coordinator'), async (req, res) 
   }
 });
 
+// --- Timezone-safe date helpers ---
+//
+// The original day-offset patterns (daily/weekly/biweekly/monthly) did
+// their arithmetic directly on UTC instants (e.g., "add exactly 7 * 24
+// hours"). That's subtly wrong across a daylight-saving transition: a
+// recurring "2:00 PM Central every Monday" event would silently drift
+// to 1:00 PM or 3:00 PM Central the week the clocks change, since a
+// fixed UTC duration doesn't track a fixed *wall-clock* time. This was
+// a pre-existing issue, not something introduced by this conversion —
+// worth fixing now since the new nth-weekday patterns below need
+// proper Central-time-aware date math anyway, so all patterns can share
+// the same correct machinery instead of half using the old buggy one.
+
+// Break a UTC instant into its Central-time calendar/clock components.
+function getCentralParts(date) {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Chicago',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hourCycle: 'h23', weekday: 'short',
+  });
+  const parts = Object.fromEntries(fmt.formatToParts(date).map((p) => [p.type, p.value]));
+  const weekdayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  return {
+    year: parseInt(parts.year), month: parseInt(parts.month), day: parseInt(parts.day),
+    hour: parseInt(parts.hour), minute: parseInt(parts.minute), second: parseInt(parts.second),
+    weekday: weekdayMap[parts.weekday],
+  };
+}
+
+// Given Central-time wall-clock components, find the UTC instant they
+// actually represent. Iterative correction handles the fact that the
+// UTC offset itself depends on whether the target date falls in
+// Central Standard or Daylight time.
+function centralPartsToUtc(year, month, day, hour, minute) {
+  let guess = new Date(Date.UTC(year, month - 1, day, hour, minute, 0));
+  for (let i = 0; i < 3; i++) {
+    const parts = getCentralParts(guess);
+    const guessedAsUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+    const wantedAsUtc = Date.UTC(year, month - 1, day, hour, minute, 0);
+    const diff = wantedAsUtc - guessedAsUtc;
+    if (diff === 0) break;
+    guess = new Date(guess.getTime() + diff);
+  }
+  return guess;
+}
+
+// Pure calendar-date arithmetic (no timezone involved) for the simple
+// day-offset patterns — steps a {year, month, day} forward by the
+// pattern's interval. Combined with centralPartsToUtc() afterward
+// (using the original occurrence's Central hour/minute) to get a
+// correctly DST-adjusted instant for each occurrence.
+function advanceCalendarDate({ year, month, day }, pattern) {
+  const d = new Date(Date.UTC(year, month - 1, day));
+  switch (pattern) {
+    case 'daily': d.setUTCDate(d.getUTCDate() + 1); break;
+    case 'weekly': d.setUTCDate(d.getUTCDate() + 7); break;
+    case 'biweekly': d.setUTCDate(d.getUTCDate() + 14); break;
+    case 'monthly': d.setUTCMonth(d.getUTCMonth() + 1); break;
+    default: d.setUTCDate(d.getUTCDate() + 7);
+  }
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() + 1, day: d.getUTCDate() };
+}
+
+// All the calendar days in a given month (Central-time calendar, not
+// UTC) that fall on a specific weekday (0=Sun..6=Sat), in order.
+function weekdaysInMonth(year, month, targetWeekday) {
+  const days = [];
+  const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  for (let day = 1; day <= daysInMonth; day++) {
+    if (new Date(Date.UTC(year, month - 1, day)).getUTCDay() === targetWeekday) days.push(day);
+  }
+  return days;
+}
+
 function generateOccurrences(startDatetime, endDatetime, pattern, endDate) {
-  const occurrences = [];
   const start = new Date(startDatetime);
   const end = endDatetime ? new Date(endDatetime) : null;
   const duration = end ? end - start : 0;
   const recurrenceEnd = new Date(endDate);
-  const current = new Date(start);
+  const startParts = getCentralParts(start);
+  const occurrences = [];
+
+  if (pattern === 'first_third' || pattern === 'second_fourth') {
+    // "1st & 3rd [weekday]" or "2nd & 4th [weekday]" of every month,
+    // where [weekday] is whatever day of the week the start date falls
+    // on in Central time.
+    const positions = pattern === 'second_fourth' ? [1, 3] : [0, 2]; // 0-indexed
+    const recurrenceEndParts = getCentralParts(recurrenceEnd);
+    let { year, month } = startParts;
+
+    while (year < recurrenceEndParts.year || (year === recurrenceEndParts.year && month <= recurrenceEndParts.month)) {
+      const days = weekdaysInMonth(year, month, startParts.weekday);
+      for (const idx of positions) {
+        if (idx >= days.length) continue;
+        const occStart = centralPartsToUtc(year, month, days[idx], startParts.hour, startParts.minute);
+        if (occStart <= start || occStart > recurrenceEnd) continue;
+        const occEnd = duration ? new Date(occStart.getTime() + duration) : null;
+        occurrences.push({ start: occStart.toISOString(), end: occEnd ? occEnd.toISOString() : null });
+      }
+      month++;
+      if (month > 12) { month = 1; year++; }
+      if (occurrences.length > 500) break; // safety limit
+    }
+    return occurrences;
+  }
+
+  // Simple day-offset patterns (daily/weekly/biweekly/monthly)
+  let currentCalendarDate = { year: startParts.year, month: startParts.month, day: startParts.day };
 
   // Skip the first occurrence (already created as parent)
-  advanceDate(current, pattern);
+  currentCalendarDate = advanceCalendarDate(currentCalendarDate, pattern);
 
-  while (current <= recurrenceEnd) {
-    const occStart = new Date(current);
-    const occEnd = duration ? new Date(current.getTime() + duration) : null;
+  while (true) {
+    const occStart = centralPartsToUtc(currentCalendarDate.year, currentCalendarDate.month, currentCalendarDate.day, startParts.hour, startParts.minute);
+    if (occStart > recurrenceEnd) break;
+    const occEnd = duration ? new Date(occStart.getTime() + duration) : null;
     occurrences.push({ start: occStart.toISOString(), end: occEnd ? occEnd.toISOString() : null });
-    advanceDate(current, pattern);
+    currentCalendarDate = advanceCalendarDate(currentCalendarDate, pattern);
     if (occurrences.length > 500) break; // safety limit
   }
 
   return occurrences;
-}
-
-function advanceDate(date, pattern) {
-  switch (pattern) {
-    case 'daily': date.setDate(date.getDate() + 1); break;
-    case 'weekly': date.setDate(date.getDate() + 7); break;
-    case 'biweekly': date.setDate(date.getDate() + 14); break;
-    case 'monthly': date.setMonth(date.getMonth() + 1); break;
-    default: date.setDate(date.getDate() + 7);
-  }
 }
 
 module.exports = router;

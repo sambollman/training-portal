@@ -25,6 +25,27 @@ const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 // DESC direction on the real sort key.
 const TRAINING_DATE_DESC_NULLS_LAST = 'CASE WHEN tr.training_date IS NULL THEN 1 ELSE 0 END, tr.training_date DESC';
 
+// Explicit column list for training_records, deliberately excluding
+// training_date/end_date/completion_date/certification_expiration —
+// those four are always added separately via CONVERT() so they come
+// back as plain text instead of native DATE values (see the notes
+// further down on why that matters for TIME/DATE columns generally).
+//
+// This list exists specifically to avoid a subtle bug: selecting
+// 'tr.*' alongside a same-named CONVERT(...) as training_date column
+// puts two columns named "training_date" in the result set — one the
+// native value, one the converted text — and which one actually wins
+// in the row object the driver builds back in Node is ambiguous rather
+// than a documented, reliable behavior. Listing columns explicitly
+// sidesteps that ambiguity entirely rather than depending on it.
+const TRAINING_RECORD_COLUMNS = [
+  'tr.id', 'tr.officer_id', 'tr.training_title', 'tr.hours', 'tr.status',
+  'tr.certified', 'tr.certification_name', 'tr.training_type', 'tr.location',
+  'tr.cost', 'tr.instructor', 'tr.certification_hours', 'tr.score', 'tr.remarks',
+  'tr.source', 'tr.enrollment_request_id', 'tr.external_request_id',
+  'tr.created_by', 'tr.created_at', 'tr.updated_at',
+];
+
 // GET /api/transcript/:officerId - get transcript for an officer
 router.get('/:officerId', requireAuth, async (req, res) => {
   const { officerId } = req.params;
@@ -37,7 +58,7 @@ router.get('/:officerId', requireAuth, async (req, res) => {
   try {
     const records = await db('training_records as tr')
       .select(
-        'tr.*',
+        ...TRAINING_RECORD_COLUMNS,
         db.raw("CONVERT(varchar(10), tr.training_date, 23) as training_date"),
         db.raw("CONVERT(varchar(10), tr.end_date, 23) as end_date"),
         db.raw("CONVERT(varchar(10), tr.completion_date, 23) as completion_date"),
@@ -110,7 +131,7 @@ router.put('/record/:recordId', requireAuth, requireRole('supervisor', 'coordina
     // dates rather than whatever the driver's native type would be).
     const formatted = await db('training_records as tr')
       .select(
-        'tr.*',
+        ...TRAINING_RECORD_COLUMNS,
         db.raw("CONVERT(varchar(10), tr.training_date, 23) as training_date"),
         db.raw("CONVERT(varchar(10), tr.end_date, 23) as end_date"),
         db.raw("CONVERT(varchar(10), tr.completion_date, 23) as completion_date"),

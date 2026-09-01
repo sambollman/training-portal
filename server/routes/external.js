@@ -98,9 +98,19 @@ router.get('/my-requests', requireAuth, async (req, res) => {
 // Get approval chain for an external request
 router.get('/chain/:requestId', requireAuth, async (req, res) => {
   try {
+    // Explicit column list rather than '*', for the same reason noted
+    // in transcripts.js: selecting '*' alongside a same-named
+    // CONVERT(...) as start_date column creates two ambiguously-named
+    // columns in the result set (native + converted), which the driver
+    // resolving down to a single JS property is not something to rely
+    // on. Listing columns explicitly avoids the ambiguity outright.
     const request = await db('external_training_requests')
       .select(
-        '*',
+        'id', 'officer_id', 'training_name', 'organization', 'location',
+        'is_out_of_state', 'duration_hours', 'description',
+        'training_cost', 'travel_cost', 'hotel_cost', 'per_diem',
+        'website', 'reason', 'officer_response', 'status', 'chain_status',
+        'attended', 'created_at', 'updated_at',
         db.raw("CONVERT(varchar(10), start_date, 23) as start_date"),
         db.raw("CONVERT(varchar(10), end_date, 23) as end_date")
       )

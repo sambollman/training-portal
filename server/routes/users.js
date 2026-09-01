@@ -1,30 +1,22 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db/connection');
+const { db } = require('../db/connection');
 const { requireAuth, requireRole } = require('../middleware/auth');
 
 // GET /api/users/my-unit - get officers under this supervisor
 router.get('/my-unit', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
   try {
-    let result;
-    if (req.user.role === 'coordinator') {
+    const baseQuery = db('users')
+      .select('id', 'full_name', 'badge_number', 'unit', 'rank', 'role')
+      .orderBy('full_name', 'asc');
+
+    const users = req.user.role === 'coordinator'
       // Coordinators can see all officers
-      result = await db.query(`
-        SELECT id, full_name, badge_number, unit, rank, role
-        FROM users
-        WHERE role = 'officer' AND is_active = true
-        ORDER BY full_name ASC
-      `);
-    } else {
+      ? await baseQuery.where({ role: 'officer', is_active: true })
       // Supervisors see only their direct reports
-      result = await db.query(`
-        SELECT id, full_name, badge_number, unit, rank, role
-        FROM users
-        WHERE supervisor_id = $1 AND is_active = true
-        ORDER BY full_name ASC
-      `, [req.user.id]);
-    }
-    res.json({ users: result.rows });
+      : await baseQuery.where({ supervisor_id: req.user.id, is_active: true });
+
+    res.json({ users });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch unit' });

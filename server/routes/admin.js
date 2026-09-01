@@ -1,44 +1,52 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db/connection');
+const { db } = require('../db/connection');
 const { requireAuth, requireRole } = require('../middleware/auth');
+
+// SQL Server error numbers for a duplicate-key violation. Postgres uses a
+// single error code ('23505') for this regardless of which kind of key
+// was violated; SQL Server uses two different numbers instead — 2627 for
+// a primary key, 2601 for any other unique constraint (our username
+// column is the latter, but both are checked to be safe).
+const DUPLICATE_KEY_ERROR_NUMBERS = [2627, 2601];
+
+function isDuplicateKeyError(err) {
+  return DUPLICATE_KEY_ERROR_NUMBERS.includes(err.number);
+}
 
 router.get('/users', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
   try {
-    const { search } = req.query
-    let query, params
+    const { search } = req.query;
 
+    let query = db('users as u')
+      .leftJoin('users as s', 's.id', 'u.supervisor_id')
+      .select('u.*', 's.full_name as supervisor_name')
+      .orderBy('u.last_name', 'asc')
+      .orderBy('u.first_name', 'asc');
+
+    // Matches the original behavior exactly: a search term filters to
+    // active users only, plus a case-insensitive match across several
+    // columns. With no search term, every user is returned (including
+    // inactive ones) — that's intentional, not an oversight.
     if (search) {
-      query = `
-        SELECT u.*, s.full_name as supervisor_name
-        FROM users u
-        LEFT JOIN users s ON u.supervisor_id = s.id
-        WHERE u.is_active = true
-        AND (
-          u.first_name ILIKE $1 OR u.last_name ILIKE $1 OR
-          u.full_name ILIKE $1 OR u.badge_number ILIKE $1 OR
-          u.unit ILIKE $1
-        )
-        ORDER BY u.last_name ASC, u.first_name ASC
-      `
-      params = [`%${search}%`]
-    } else {
-      query = `
-        SELECT u.*, s.full_name as supervisor_name
-        FROM users u
-        LEFT JOIN users s ON u.supervisor_id = s.id
-        ORDER BY u.last_name ASC, u.first_name ASC
-      `
-      params = []
+      const term = `%${search}%`;
+      query = query.where('u.is_active', true).andWhere((builder) => {
+        builder
+          .whereILike('u.first_name', term)
+          .orWhereILike('u.last_name', term)
+          .orWhereILike('u.full_name', term)
+          .orWhereILike('u.badge_number', term)
+          .orWhereILike('u.unit', term);
+      });
     }
 
-    const result = await db.query(query, params)
-    res.json({ users: result.rows })
+    const users = await query;
+    res.json({ users });
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Failed to fetch users' })
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch users' });
   }
-})
+});
 
 router.post('/users', requireAuth, requireRole('coordinator'), async (req, res) => {
   const { username, first_name, last_name, email, badge_number, post_license_number, unit, rank, role, supervisor_id } = req.body;
@@ -50,19 +58,25 @@ router.post('/users', requireAuth, requireRole('coordinator'), async (req, res) 
   const full_name = `${first_name} ${last_name}`;
 
   try {
-    const result = await db.query(`
-      INSERT INTO users (username, first_name, last_name, full_name, email, badge_number, post_license_number, unit, rank, role, supervisor_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-      RETURNING *
-    `, [
-      username, first_name, last_name, full_name,
-      email || null, badge_number || null, post_license_number || null,
-      unit || null, rank || 'Officer', role || 'officer', supervisor_id || null
-    ]);
+    const [user] = await db('users')
+      .insert({
+        username,
+        first_name,
+        last_name,
+        full_name,
+        email: email || null,
+        badge_number: badge_number || null,
+        post_license_number: post_license_number || null,
+        unit: unit || null,
+        rank: rank || 'Officer',
+        role: role || 'officer',
+        supervisor_id: supervisor_id || null,
+      })
+      .returning('*');
 
-    res.status(201).json({ user: result.rows[0] });
+    res.status(201).json({ user });
   } catch (err) {
-    if (err.code === '23505') {
+    if (isDuplicateKeyError(err)) {
       return res.status(400).json({ error: 'Username already exists' });
     }
     console.error(err);
@@ -76,26 +90,28 @@ router.put('/users/:id', requireAuth, requireRole('coordinator'), async (req, re
   const full_name = `${first_name} ${last_name}`;
 
   try {
-    const result = await db.query(`
-      UPDATE users SET
-        first_name = $1, last_name = $2, full_name = $3,
-        email = $4, badge_number = $5, post_license_number = $6,
-        unit = $7, rank = $8, role = $9,
-        supervisor_id = $10, is_active = $11
-      WHERE id = $12
-      RETURNING *
-    `, [
-      first_name, last_name, full_name,
-      email || null, badge_number || null, post_license_number || null,
-      unit || null, rank, role,
-      supervisor_id || null, is_active !== false, req.params.id
-    ]);
+    const [user] = await db('users')
+      .where({ id: req.params.id })
+      .update({
+        first_name,
+        last_name,
+        full_name,
+        email: email || null,
+        badge_number: badge_number || null,
+        post_license_number: post_license_number || null,
+        unit: unit || null,
+        rank,
+        role,
+        supervisor_id: supervisor_id || null,
+        is_active: is_active !== false,
+      })
+      .returning('*');
 
-    if (!result.rows[0]) {
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    res.json({ user: result.rows[0] });
+    res.json({ user });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to update user' });
@@ -104,11 +120,11 @@ router.put('/users/:id', requireAuth, requireRole('coordinator'), async (req, re
 
 router.get('/users/:id', requireAuth, requireRole('coordinator'), async (req, res) => {
   try {
-    const result = await db.query('SELECT * FROM users WHERE id = $1', [req.params.id]);
-    if (!result.rows[0]) {
+    const user = await db('users').where({ id: req.params.id }).first();
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    res.json({ user: result.rows[0] });
+    res.json({ user });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch user' });

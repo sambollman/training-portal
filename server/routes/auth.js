@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db/connection');
+const { db } = require('../db/connection');
 const { requireAuth, OKTA_HEADER, ADMIN_PASSWORD } = require('../middleware/auth');
 
 // Get current logged in user
@@ -11,8 +11,10 @@ router.get('/me', requireAuth, (req, res) => {
 // Dev login - only available when OKTA_HEADER is not set
 if (!OKTA_HEADER && ADMIN_PASSWORD) {
   router.get('/dev-users', async (req, res) => {
-    const result = await db.query('SELECT id, username, full_name, role FROM users ORDER BY username');
-    res.json({ users: result.rows });
+    const users = await db('users')
+      .select('id', 'username', 'full_name', 'role')
+      .orderBy('username');
+    res.json({ users });
   });
 
   router.post('/dev-login', async (req, res) => {
@@ -26,13 +28,13 @@ if (!OKTA_HEADER && ADMIN_PASSWORD) {
       return res.status(400).json({ error: 'No user selected' });
     }
 
-    const result = await db.query('SELECT * FROM users WHERE id = $1', [userId]);
-    if (!result.rows[0]) {
+    const user = await db('users').where({ id: userId }).first();
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
     req.session.userId = userId;
-    res.json({ user: result.rows[0] });
+    res.json({ user });
   });
 
   router.post('/dev-logout', (req, res) => {

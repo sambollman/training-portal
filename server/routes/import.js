@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db/connection');
+const { db } = require('../db/connection');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const multer = require('multer');
 const XLSX = require('xlsx');
@@ -71,48 +71,45 @@ router.post('/training-records', requireAuth, requireRole('coordinator'), upload
       const endDate = excelDateToString(endSerial);
 
       // Find matching user by full_name
-      const userResult = await db.query(
-        `SELECT id FROM users WHERE full_name ILIKE $1 AND is_active = true LIMIT 1`,
-        [employee]
-      );
+      const user = await db('users')
+        .select('id')
+        .whereILike('full_name', employee)
+        .where('is_active', true)
+        .first();
 
-      if (userResult.rows.length === 0) {
+      if (!user) {
         results.skipped_no_match.push(employee);
         continue;
       }
 
-      const officerId = userResult.rows[0].id;
+      const officerId = user.id;
 
       // Check for duplicate (same officer, same course, same start date)
-      const dupCheck = await db.query(
-        `SELECT id FROM training_records WHERE officer_id = $1 AND training_title ILIKE $2 AND training_date = $3`,
-        [officerId, course, startDate]
-      );
+      const duplicate = await db('training_records')
+        .select('id')
+        .where({ officer_id: officerId, training_date: startDate })
+        .whereILike('training_title', course)
+        .first();
 
-      if (dupCheck.rows.length > 0) {
+      if (duplicate) {
         results.skipped_duplicate++;
         continue;
       }
 
       // Insert record
-      await db.query(`
-        INSERT INTO training_records (
-        officer_id, training_title, training_date, end_date,
-        hours, certification_hours, cost, remarks,
-        status, source, created_by
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,'import',$10)
-    `, [
-      officerId,
-      course,
-      startDate,
-      endDate,
-      courseHours || null,
-      certHours || null,
-      cost || null,
-      extraCosts ? `Extra costs: $${extraCosts}` : null,
-      status,
-      req.user.id
-    ]);
+      await db('training_records').insert({
+        officer_id: officerId,
+        training_title: course,
+        training_date: startDate,
+        end_date: endDate,
+        hours: courseHours || null,
+        certification_hours: certHours || null,
+        cost: cost || null,
+        remarks: extraCosts ? `Extra costs: $${extraCosts}` : null,
+        status,
+        source: 'import',
+        created_by: req.user.id,
+      });
 
       results.imported++;
     }

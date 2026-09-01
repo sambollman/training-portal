@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db/connection');
+const { db } = require('../db/connection');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { sendMail } = require('../utils/mailer');
 
@@ -25,46 +25,49 @@ router.post('/submit', requireAuth, async (req, res) => {
   }
 
   try {
-    const approver = await db.query('SELECT * FROM users WHERE id = $1', [first_approver_id]);
-    if (!approver.rows[0]) {
+    const approver = await db('users').where({ id: first_approver_id }).first();
+    if (!approver) {
       return res.status(404).json({ error: 'Approver not found' });
     }
 
-    const request = await db.query(`
-      INSERT INTO external_training_requests (
-        officer_id, training_name, description, organization, location, is_out_of_state,
-        start_date, end_date, duration_hours,
-        training_cost, travel_cost, hotel_cost, per_diem,
-        website, reason, chain_status
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15, 'in_progress')
-      RETURNING *
-    `, [
-      req.user.id, training_name, description || null, organization, location, is_out_of_state || false,
-      start_date || null, end_date || null, duration_hours || null,
-      training_cost || null, travel_cost || null, hotel_cost || null, per_diem || null,
-      website || null, reason || null
-    ]);
+    const [request] = await db('external_training_requests')
+      .insert({
+        officer_id: req.user.id,
+        training_name,
+        description: description || null,
+        organization,
+        location,
+        is_out_of_state: is_out_of_state || false,
+        start_date: start_date || null,
+        end_date: end_date || null,
+        duration_hours: duration_hours || null,
+        training_cost: training_cost || null,
+        travel_cost: travel_cost || null,
+        hotel_cost: hotel_cost || null,
+        per_diem: per_diem || null,
+        website: website || null,
+        reason: reason || null,
+        chain_status: 'in_progress',
+      })
+      .returning('*');
 
-    await db.query(`
-      INSERT INTO approval_steps (external_request_id, step_number, approver_id, approver_name, approver_rank)
-      VALUES ($1, $2, $3, $4, $5)
-    `, [
-      request.rows[0].id,
-      1,
-      first_approver_id,
-      approver.rows[0].full_name,
-      approver.rows[0].rank
-    ]);
+    await db('approval_steps').insert({
+      external_request_id: request.id,
+      step_number: 1,
+      approver_id: first_approver_id,
+      approver_name: approver.full_name,
+      approver_rank: approver.rank,
+    });
 
     sendMail({
-      to: approver.rows[0].email,
+      to: approver.email,
       subject: `External training request awaiting your approval - ${training_name}`,
       text: `${req.user.full_name} has requested to attend "${training_name}"` +
         (fmtDate(start_date) ? ` on ${fmtDate(start_date)}` : '') +
         `.\n\nLog in to the Training Portal to review and approve or deny this request.`,
-    })
+    });
 
-    res.status(201).json({ request: request.rows[0] });
+    res.status(201).json({ request });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to submit request' });
@@ -74,21 +77,18 @@ router.post('/submit', requireAuth, async (req, res) => {
 // Get my external training requests
 router.get('/my-requests', requireAuth, async (req, res) => {
   try {
-    const result = await db.query(`
-      SELECT etr.*,
-        to_char(etr.start_date, 'YYYY-MM-DD') as start_date,
-        to_char(etr.end_date, 'YYYY-MM-DD') as end_date,
-        (SELECT comment FROM approval_steps 
-         WHERE external_request_id = etr.id AND decision = 'returned'
-         ORDER BY decided_at DESC LIMIT 1) as return_comment,
-        (SELECT approver_name FROM approval_steps 
-         WHERE external_request_id = etr.id AND decision = 'returned'
-         ORDER BY decided_at DESC LIMIT 1) as returned_by
-      FROM external_training_requests etr
-      WHERE etr.officer_id = $1
-      ORDER BY etr.created_at DESC
-    `, [req.user.id]);
-    res.json({ requests: result.rows });
+    const requests = await db('external_training_requests as etr')
+      .select(
+        'etr.*',
+        db.raw("CONVERT(varchar(10), etr.start_date, 23) as start_date"),
+        db.raw("CONVERT(varchar(10), etr.end_date, 23) as end_date"),
+        db.raw("(SELECT TOP 1 comment FROM approval_steps WHERE external_request_id = etr.id AND decision = 'returned' ORDER BY decided_at DESC) as return_comment"),
+        db.raw("(SELECT TOP 1 approver_name FROM approval_steps WHERE external_request_id = etr.id AND decision = 'returned' ORDER BY decided_at DESC) as returned_by")
+      )
+      .where('etr.officer_id', req.user.id)
+      .orderBy('etr.created_at', 'desc');
+
+    res.json({ requests });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch requests' });
@@ -98,27 +98,25 @@ router.get('/my-requests', requireAuth, async (req, res) => {
 // Get approval chain for an external request
 router.get('/chain/:requestId', requireAuth, async (req, res) => {
   try {
-    const request = await db.query(`
-      SELECT *,
-        to_char(start_date, 'YYYY-MM-DD') as start_date,
-        to_char(end_date, 'YYYY-MM-DD') as end_date
-      FROM external_training_requests
-      WHERE id = $1 AND officer_id = $2
-    `, [req.params.requestId, req.user.id]);
+    const request = await db('external_training_requests')
+      .select(
+        '*',
+        db.raw("CONVERT(varchar(10), start_date, 23) as start_date"),
+        db.raw("CONVERT(varchar(10), end_date, 23) as end_date")
+      )
+      .where({ id: req.params.requestId, officer_id: req.user.id })
+      .first();
 
-    if (!request.rows[0]) {
+    if (!request) {
       return res.status(404).json({ error: 'Request not found' });
     }
 
-    const steps = await db.query(`
-      SELECT ap.*,
-        to_char(ap.decided_at AT TIME ZONE 'America/Chicago', 'MM/DD/YYYY HH12:MI AM') as decided_at_central
-      FROM approval_steps ap
-      WHERE ap.external_request_id = $1
-      ORDER BY ap.step_number ASC
-    `, [req.params.requestId]);
+    const steps = await db('approval_steps as ap')
+      .select('ap.*', db.raw("FORMAT(ap.decided_at AT TIME ZONE 'UTC' AT TIME ZONE 'Central Standard Time', 'MM/dd/yyyy hh:mm tt') as decided_at_central"))
+      .where('ap.external_request_id', req.params.requestId)
+      .orderBy('ap.step_number', 'asc');
 
-    res.json({ request: request.rows[0], steps: steps.rows });
+    res.json({ request, steps });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch chain' });
@@ -128,29 +126,25 @@ router.get('/chain/:requestId', requireAuth, async (req, res) => {
 // Get pending external requests for current approver
 router.get('/my-pending', requireAuth, async (req, res) => {
   try {
-    const result = await db.query(`
-      SELECT
-        ap.*,
-        etr.training_name, etr.organization, etr.location,
-        etr.is_out_of_state, etr.reason,
-        etr.training_cost, etr.travel_cost, etr.hotel_cost, etr.per_diem,
-        etr.website, etr.chain_status, etr.officer_id,
-        to_char(etr.start_date, 'YYYY-MM-DD') as start_date,
-        to_char(etr.end_date, 'YYYY-MM-DD') as end_date,
-        u.full_name as officer_name,
-        u.rank as officer_rank,
-        u.badge_number as officer_badge,
-        u.unit as officer_unit,
-        ap.is_additional
-      FROM approval_steps ap
-      JOIN external_training_requests etr ON ap.external_request_id = etr.id
-      JOIN users u ON etr.officer_id = u.id
-      WHERE ap.approver_id = $1
-      AND ap.decision IS NULL
-      ORDER BY ap.created_at ASC
-    `, [req.user.id]);
+    const approvals = await db('approval_steps as ap')
+      .join('external_training_requests as etr', 'ap.external_request_id', 'etr.id')
+      .join('users as u', 'etr.officer_id', 'u.id')
+      .select(
+        'ap.*',
+        'etr.training_name', 'etr.organization', 'etr.location',
+        'etr.is_out_of_state', 'etr.reason',
+        'etr.training_cost', 'etr.travel_cost', 'etr.hotel_cost', 'etr.per_diem',
+        'etr.website', 'etr.chain_status', 'etr.officer_id',
+        db.raw("CONVERT(varchar(10), etr.start_date, 23) as start_date"),
+        db.raw("CONVERT(varchar(10), etr.end_date, 23) as end_date"),
+        'u.full_name as officer_name', 'u.rank as officer_rank', 'u.badge_number as officer_badge', 'u.unit as officer_unit',
+        'ap.is_additional'
+      )
+      .where('ap.approver_id', req.user.id)
+      .whereNull('ap.decision')
+      .orderBy('ap.created_at', 'asc');
 
-    res.json({ approvals: result.rows });
+    res.json({ approvals });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch pending approvals' });
@@ -166,44 +160,35 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
   }
 
   try {
-    const stepResult = await db.query(
-      'SELECT * FROM approval_steps WHERE id = $1 AND approver_id = $2',
-      [req.params.stepId, req.user.id]
-    );
+    const step = await db('approval_steps')
+      .where({ id: req.params.stepId, approver_id: req.user.id })
+      .first();
 
-    if (!stepResult.rows[0]) {
+    if (!step) {
       return res.status(404).json({ error: 'Approval step not found' });
     }
 
-    const step = stepResult.rows[0];
+    const externalRequest = await db('external_training_requests as etr')
+      .join('users as o', 'etr.officer_id', 'o.id')
+      .select('etr.*', 'o.full_name as officer_name', 'o.email as officer_email')
+      .where('etr.id', step.external_request_id)
+      .first();
 
-    const requestResult = await db.query(`
-      SELECT etr.*, o.full_name as officer_name, o.email as officer_email
-      FROM external_training_requests etr
-      JOIN users o ON etr.officer_id = o.id
-      WHERE etr.id = $1
-    `, [step.external_request_id]);
-    const externalRequest = requestResult.rows[0];
-    const currentRank = req.user.rank?.toLowerCase()
-    const isOutOfState = externalRequest.is_out_of_state
+    const currentRank = req.user.rank?.toLowerCase();
+    const isOutOfState = externalRequest.is_out_of_state;
 
     // Finalizes at Captain (in-state) or Assistant Chief (out-of-state).
     // The coordinator is notified by email at that point - it is not a
     // required approval step, per the actual approval policy.
-    const isFinalStep = (currentRank === 'captain' && !isOutOfState) || currentRank === 'assistant chief'
+    const isFinalStep = (currentRank === 'captain' && !isOutOfState) || currentRank === 'assistant chief';
 
-    await db.query(`
-      UPDATE approval_steps SET
-        decision = $1, comment = $2, next_approver_id = $3, decided_at = NOW()
-      WHERE id = $4
-    `, [decision, comment || null, next_approver_id || null, req.params.stepId]);
+    await db('approval_steps')
+      .where({ id: req.params.stepId })
+      .update({ decision, comment: comment || null, next_approver_id: next_approver_id || null, decided_at: db.fn.now() });
 
     // Handle returned decision
     if (decision === 'returned') {
-      await db.query(`
-        UPDATE external_training_requests SET chain_status = 'returned'
-        WHERE id = $1
-      `, [step.external_request_id]);
+      await db('external_training_requests').where({ id: step.external_request_id }).update({ chain_status: 'returned' });
 
       sendMail({
         to: externalRequest.officer_email,
@@ -211,17 +196,15 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
         text: `${req.user.full_name} has returned your request for "${externalRequest.training_name}" for more information.\n\n` +
           (comment ? `Their comment: ${comment}\n\n` : '') +
           `Log in to the Training Portal to review and resubmit your request.`,
-      })
+      });
 
       return res.json({ ok: true, is_final: false, returned: true });
     }
 
     if (isFinalStep) {
-      await db.query(`
-        UPDATE external_training_requests SET
-          status = $1, chain_status = 'complete'
-        WHERE id = $2
-      `, [decision, step.external_request_id]);
+      await db('external_training_requests')
+        .where({ id: step.external_request_id })
+        .update({ status: decision, chain_status: 'complete' });
 
       sendMail({
         to: externalRequest.officer_email,
@@ -234,68 +217,55 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
           : `Your request to attend "${externalRequest.training_name}" was not approved.` +
             (comment ? `\n\nReason: ${comment}` : '') +
             `\n\nLog in to the Training Portal for details.`,
-      })
+      });
 
-      const coordinator = await db.query(
-        "SELECT full_name, email FROM users WHERE role = 'coordinator' AND is_active = true LIMIT 1"
-      );
-      if (coordinator.rows[0]) {
+      const coordinator = await db('users')
+        .select('full_name', 'email')
+        .where({ role: 'coordinator', is_active: true })
+        .first();
+      if (coordinator) {
         sendMail({
-          to: coordinator.rows[0].email,
+          to: coordinator.email,
           subject: `External training request ${decision} - ${externalRequest.training_name}`,
           text: `FYI - ${externalRequest.officer_name}'s request for "${externalRequest.training_name}" was ${decision} by ${req.user.full_name} (${req.user.rank}).\n\n` +
             `No action is needed from you; this is for your records.`,
-        })
+        });
       }
     } else if (next_approver_id) {
-      const nextApprover = await db.query('SELECT * FROM users WHERE id = $1', [next_approver_id]);
-      const maxStep = await db.query(
-        'SELECT MAX(step_number) as max FROM approval_steps WHERE external_request_id = $1',
-        [step.external_request_id]
-      );
+      const nextApprover = await db('users').where({ id: next_approver_id }).first();
+      const { max } = await db('approval_steps').where({ external_request_id: step.external_request_id }).max('step_number as max').first();
 
-      await db.query(`
-        INSERT INTO approval_steps
-          (external_request_id, step_number, approver_id, approver_name, approver_rank)
-        VALUES ($1, $2, $3, $4, $5)
-      `, [
-        step.external_request_id,
-        maxStep.rows[0].max + 1,
-        next_approver_id,
-        nextApprover.rows[0].full_name,
-        nextApprover.rows[0].rank
-      ]);
+      await db('approval_steps').insert({
+        external_request_id: step.external_request_id,
+        step_number: max + 1,
+        approver_id: next_approver_id,
+        approver_name: nextApprover.full_name,
+        approver_rank: nextApprover.rank,
+      });
 
-      await db.query(`
-        UPDATE external_training_requests SET chain_status = 'in_progress'
-        WHERE id = $1
-      `, [step.external_request_id]);
+      await db('external_training_requests').where({ id: step.external_request_id }).update({ chain_status: 'in_progress' });
 
       sendMail({
-        to: nextApprover.rows[0].email,
+        to: nextApprover.email,
         subject: `Training request awaiting your approval - ${externalRequest.training_name}`,
         text: `${externalRequest.officer_name}'s request to attend "${externalRequest.training_name}" needs your review.\n\n` +
           `Log in to the Training Portal to review and approve or deny this request.`,
-      })
+      });
     }
 
     // Insert additional approver if requested
     if (req.body.additional_approver_id) {
-      const addlApprover = await db.query('SELECT * FROM users WHERE id = $1', [req.body.additional_approver_id]);
-      const maxStep = await db.query(
-        'SELECT MAX(step_number) as max FROM approval_steps WHERE external_request_id = $1',
-        [step.external_request_id]
-      );
-      await db.query(`
-        INSERT INTO approval_steps (external_request_id, step_number, approver_id, approver_name, approver_rank, is_additional)
-        VALUES ($1, $2, $3, $4, $5, true)
-      `, [
-        step.external_request_id,
-        maxStep.rows[0].max + 1,
-        req.body.additional_approver_id,
-        addlApprover.rows[0].full_name,
-        addlApprover.rows[0].rank
-      ]);
+      const addlApprover = await db('users').where({ id: req.body.additional_approver_id }).first();
+      const { max } = await db('approval_steps').where({ external_request_id: step.external_request_id }).max('step_number as max').first();
+
+      await db('approval_steps').insert({
+        external_request_id: step.external_request_id,
+        step_number: max + 1,
+        approver_id: req.body.additional_approver_id,
+        approver_name: addlApprover.full_name,
+        approver_rank: addlApprover.rank,
+        is_additional: true,
+      });
     }
 
     res.json({ ok: true, is_final: isFinalStep });
@@ -307,21 +277,18 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
 
 router.get('/history/:requestId', requireAuth, async (req, res) => {
   try {
-    const steps = await db.query(`
-      SELECT ap.*,
-        to_char(ap.decided_at AT TIME ZONE 'America/Chicago', 'MM/DD/YYYY HH12:MI AM') as decided_at_central
-      FROM approval_steps ap
-      WHERE ap.external_request_id = $1
-      AND ap.decision IS NOT NULL
-      ORDER BY ap.step_number ASC
-    `, [req.params.requestId])
+    const steps = await db('approval_steps as ap')
+      .select('ap.*', db.raw("FORMAT(ap.decided_at AT TIME ZONE 'UTC' AT TIME ZONE 'Central Standard Time', 'MM/dd/yyyy hh:mm tt') as decided_at_central"))
+      .where('ap.external_request_id', req.params.requestId)
+      .whereNotNull('ap.decision')
+      .orderBy('ap.step_number', 'asc');
 
-    res.json({ steps: steps.rows })
+    res.json({ steps });
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Failed to fetch history' })
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch history' });
   }
-})
+});
 
 // POST /api/external/respond/:requestId - officer responds to a returned external request
 router.post('/respond/:requestId', requireAuth, async (req, res) => {
@@ -330,88 +297,72 @@ router.post('/respond/:requestId', requireAuth, async (req, res) => {
     duration_hours, website, description } = req.body;
 
   try {
-    const request = await db.query(
-      'SELECT * FROM external_training_requests WHERE id = $1 AND officer_id = $2',
-      [req.params.requestId, req.user.id]
-    );
+    const request = await db('external_training_requests')
+      .where({ id: req.params.requestId, officer_id: req.user.id })
+      .first();
 
-    if (!request.rows[0]) {
+    if (!request) {
       return res.status(404).json({ error: 'Request not found' });
     }
 
-    if (request.rows[0].chain_status !== 'returned') {
+    if (request.chain_status !== 'returned') {
       return res.status(400).json({ error: 'This request has not been returned for more information' });
     }
 
-    await db.query(`
-      UPDATE external_training_requests SET
-        officer_response = $1,
-        reason = $2,
-        training_cost = $3,
-        travel_cost = $4,
-        hotel_cost = $5,
-        per_diem = $6,
-        training_name = COALESCE($7, training_name),
-        organization = COALESCE($8, organization),
-        location = COALESCE($9, location),
-        is_out_of_state = $10,
-        start_date = COALESCE($11, start_date),
-        end_date = COALESCE($12, end_date),
-        duration_hours = COALESCE($13, duration_hours),
-        website = COALESCE($14, website),
-        description = COALESCE($15, description),
-        chain_status = 'in_progress'
-      WHERE id = $16
-    `, [
-      officer_response || null,
-      reason || request.rows[0].reason,
-      training_cost || null,
-      travel_cost || null,
-      hotel_cost || null,
-      per_diem || null,
-      training_name || null,
-      organization || null,
-      location || null,
-      is_out_of_state || false,
-      start_date || null,
-      end_date || null,
-      duration_hours || null,
-      website || null,
-      description || null,
-      req.params.requestId
-    ]);
+    // The original Postgres version used COALESCE($n, column) at the SQL
+    // layer for most fields — "keep the existing value if nothing new
+    // was submitted." Same effect achieved here in JS with `|| request.x`
+    // before the update, using the row already fetched above; this
+    // keeps the query itself simpler and dialect-neutral. Note
+    // is_out_of_state is NOT coalesced, matching the original exactly —
+    // it always gets overwritten with the submitted value (defaulting
+    // to false), unlike the other fields.
+    await db('external_training_requests')
+      .where({ id: req.params.requestId })
+      .update({
+        officer_response: officer_response || null,
+        reason: reason || request.reason,
+        training_cost: training_cost || null,
+        travel_cost: travel_cost || null,
+        hotel_cost: hotel_cost || null,
+        per_diem: per_diem || null,
+        training_name: training_name || request.training_name,
+        organization: organization || request.organization,
+        location: location || request.location,
+        is_out_of_state: is_out_of_state || false,
+        start_date: start_date || request.start_date,
+        end_date: end_date || request.end_date,
+        duration_hours: duration_hours || request.duration_hours,
+        website: website || request.website,
+        description: description || request.description,
+        chain_status: 'in_progress',
+      });
 
     // Create a new pending step for the approver who returned it
-    const returnedStep = await db.query(`
-      SELECT * FROM approval_steps 
-      WHERE external_request_id = $1 AND decision = 'returned'
-      ORDER BY decided_at DESC LIMIT 1
-    `, [req.params.requestId]);
+    const returnedStep = await db('approval_steps')
+      .where({ external_request_id: req.params.requestId, decision: 'returned' })
+      .orderBy('decided_at', 'desc')
+      .first();
 
-    if (returnedStep.rows[0]) {
-      const maxStep = await db.query(
-        'SELECT MAX(step_number) as max FROM approval_steps WHERE external_request_id = $1',
-        [req.params.requestId]
-      );
-      await db.query(`
-        INSERT INTO approval_steps (external_request_id, step_number, approver_id, approver_name, approver_rank)
-        VALUES ($1, $2, $3, $4, $5)
-      `, [
-        req.params.requestId,
-        maxStep.rows[0].max + 1,
-        returnedStep.rows[0].approver_id,
-        returnedStep.rows[0].approver_name,
-        returnedStep.rows[0].approver_rank
-      ]);
+    if (returnedStep) {
+      const { max } = await db('approval_steps').where({ external_request_id: req.params.requestId }).max('step_number as max').first();
 
-      const approverInfo = await db.query('SELECT email FROM users WHERE id = $1', [returnedStep.rows[0].approver_id]);
+      await db('approval_steps').insert({
+        external_request_id: req.params.requestId,
+        step_number: max + 1,
+        approver_id: returnedStep.approver_id,
+        approver_name: returnedStep.approver_name,
+        approver_rank: returnedStep.approver_rank,
+      });
+
+      const approverInfo = await db('users').select('email').where({ id: returnedStep.approver_id }).first();
 
       sendMail({
-        to: approverInfo.rows[0]?.email,
-        subject: `Updated training request ready for your review - ${request.rows[0].training_name}`,
-        text: `${req.user.full_name} has responded to your request for more information on "${request.rows[0].training_name}".\n\n` +
+        to: approverInfo?.email,
+        subject: `Updated training request ready for your review - ${request.training_name}`,
+        text: `${req.user.full_name} has responded to your request for more information on "${request.training_name}".\n\n` +
           `Log in to the Training Portal to review the updated request.`,
-      })
+      });
     }
 
     res.json({ ok: true });
@@ -423,11 +374,15 @@ router.post('/respond/:requestId', requireAuth, async (req, res) => {
 
 router.delete('/:id', requireAuth, async (req, res) => {
   try {
-    const result = await db.query(
-      'DELETE FROM external_training_requests WHERE id = $1 AND officer_id = $2 AND chain_status != \'complete\' RETURNING *',
-      [req.params.id, req.user.id]
-    );
-    if (!result.rows[0]) {
+    // external_training_requests has no update trigger, so .returning()
+    // is fine on this DELETE.
+    const [deleted] = await db('external_training_requests')
+      .where({ id: req.params.id, officer_id: req.user.id })
+      .whereNot('chain_status', 'complete')
+      .delete()
+      .returning('*');
+
+    if (!deleted) {
       return res.status(400).json({ error: 'Cannot withdraw this request' });
     }
     res.json({ ok: true });
@@ -440,36 +395,30 @@ router.delete('/:id', requireAuth, async (req, res) => {
 // GET /api/external/all - all external requests (supervisor/coordinator)
 router.get('/all', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
   try {
-    let query, params;
+    const baseColumns = [
+      'etr.*',
+      db.raw("CONVERT(varchar(10), etr.start_date, 23) as start_date"),
+      db.raw("CONVERT(varchar(10), etr.end_date, 23) as end_date"),
+      'u.full_name as officer_name', 'u.badge_number', 'u.unit',
+    ];
 
+    let requests;
     if (req.user.role === 'coordinator') {
-      query = `
-        SELECT etr.*,
-          to_char(etr.start_date, 'YYYY-MM-DD') as start_date,
-          to_char(etr.end_date, 'YYYY-MM-DD') as end_date,
-          u.full_name as officer_name, u.badge_number, u.unit
-        FROM external_training_requests etr
-        JOIN users u ON etr.officer_id = u.id
-        ORDER BY etr.created_at DESC
-      `;
-      params = [];
+      requests = await db('external_training_requests as etr')
+        .join('users as u', 'etr.officer_id', 'u.id')
+        .select(...baseColumns)
+        .orderBy('etr.created_at', 'desc');
     } else {
-      query = `
-        SELECT DISTINCT etr.*,
-          to_char(etr.start_date, 'YYYY-MM-DD') as start_date,
-          to_char(etr.end_date, 'YYYY-MM-DD') as end_date,
-          u.full_name as officer_name, u.badge_number, u.unit
-        FROM external_training_requests etr
-        JOIN users u ON etr.officer_id = u.id
-        LEFT JOIN approval_steps ap ON ap.external_request_id = etr.id
-        WHERE ap.approver_id = $1
-        ORDER BY etr.created_at DESC
-      `;
-      params = [req.user.id];
+      requests = await db('external_training_requests as etr')
+        .distinct()
+        .join('users as u', 'etr.officer_id', 'u.id')
+        .leftJoin('approval_steps as ap', 'ap.external_request_id', 'etr.id')
+        .select(...baseColumns)
+        .where('ap.approver_id', req.user.id)
+        .orderBy('etr.created_at', 'desc');
     }
 
-    const result = await db.query(query, params);
-    res.json({ requests: result.rows });
+    res.json({ requests });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch external requests' });

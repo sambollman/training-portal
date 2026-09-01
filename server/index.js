@@ -1,9 +1,8 @@
 const express = require('express');
 const session = require('express-session');
-const pgSession = require('connect-pg-simple')(session);
+const KnexSessionStore = require('connect-session-knex')(session);
 const path = require('path');
-const { pool } = require('./db/connection');
-
+const { db } = require('./db/connection');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -12,10 +11,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(session({
-  store: new pgSession({
-    pool,
-    tableName: 'user_sessions',
-    createTableIfMissing: true,
+  store: new KnexSessionStore({
+    knex: db,
+    tablename: 'user_sessions',
+    createtable: true,
   }),
   secret: process.env.SESSION_SECRET || 'dev-secret',
   resave: false,
@@ -65,7 +64,29 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-app.listen(PORT, () => {
-  console.log('Server running on port ' + PORT);
-  console.log('Okta mode: ' + (process.env.OKTA_HEADER ? 'enabled' : 'disabled'));
-});
+// Build/maintain the database schema before accepting any requests. On a
+// brand-new SQL Server database this creates every table from scratch; on
+// one that's already up to date, it's a no-op (Knex tracks what's already
+// been applied in the knex_migrations table). Any future schema change
+// just needs a new migration file added to server/migrations/ — no manual
+// SQL required on IT's end when this gets redeployed.
+async function start() {
+  try {
+    const [batch, appliedMigrations] = await db.migrate.latest();
+    if (appliedMigrations.length === 0) {
+      console.log('Database schema already up to date, nothing to migrate.');
+    } else {
+      console.log(`Ran migration batch ${batch}: ${appliedMigrations.join(', ')}`);
+    }
+  } catch (err) {
+    console.error('Failed to build/update database schema:', err);
+    process.exit(1);
+  }
+
+  app.listen(PORT, () => {
+    console.log('Server running on port ' + PORT);
+    console.log('Okta mode: ' + (process.env.OKTA_HEADER ? 'enabled' : 'disabled'));
+  });
+}
+
+start();

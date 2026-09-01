@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db/connection');
+const { db } = require('../db/connection');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const multer = require('multer');
 const path = require('path');
@@ -19,43 +19,46 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
+// Postgres supports "ORDER BY x DESC NULLS LAST" directly. SQL Server
+// has no equivalent syntax, so this achieves the same result with a
+// CASE expression that sorts NULL dates to the end regardless of the
+// DESC direction on the real sort key.
+const TRAINING_DATE_DESC_NULLS_LAST = 'CASE WHEN tr.training_date IS NULL THEN 1 ELSE 0 END, tr.training_date DESC';
+
 // GET /api/transcript/:officerId - get transcript for an officer
 router.get('/:officerId', requireAuth, async (req, res) => {
   const { officerId } = req.params;
 
   // Officers can only see their own transcript
   if (req.user.role === 'officer' && req.user.id !== officerId) {
-  return res.status(403).json({ error: 'Forbidden' });
-}
+    return res.status(403).json({ error: 'Forbidden' });
+  }
 
   try {
-    const records = await db.query(`
-      SELECT tr.*,
-        to_char(tr.training_date, 'YYYY-MM-DD') as training_date,
-        to_char(tr.end_date, 'YYYY-MM-DD') as end_date,
-        to_char(tr.completion_date, 'YYYY-MM-DD') as completion_date,
-        to_char(tr.certification_expiration, 'YYYY-MM-DD') as certification_expiration
-      FROM training_records tr
-      WHERE tr.officer_id = $1
-      ORDER BY tr.training_date DESC NULLS LAST
-    `, [officerId]);
+    const records = await db('training_records as tr')
+      .select(
+        'tr.*',
+        db.raw("CONVERT(varchar(10), tr.training_date, 23) as training_date"),
+        db.raw("CONVERT(varchar(10), tr.end_date, 23) as end_date"),
+        db.raw("CONVERT(varchar(10), tr.completion_date, 23) as completion_date"),
+        db.raw("CONVERT(varchar(10), tr.certification_expiration, 23) as certification_expiration")
+      )
+      .where('tr.officer_id', officerId)
+      .orderByRaw(TRAINING_DATE_DESC_NULLS_LAST);
 
     // Get certificates for each record
-    const recordIds = records.rows.map(r => r.id);
+    const recordIds = records.map((r) => r.id);
     let certificates = [];
     if (recordIds.length > 0) {
-      const certResult = await db.query(`
-        SELECT * FROM training_certificates
-        WHERE training_record_id = ANY($1)
-        ORDER BY created_at ASC
-      `, [recordIds]);
-      certificates = certResult.rows;
+      certificates = await db('training_certificates')
+        .whereIn('training_record_id', recordIds)
+        .orderBy('created_at', 'asc');
     }
 
     // Attach certificates to records
-    const recordsWithCerts = records.rows.map(r => ({
+    const recordsWithCerts = records.map((r) => ({
       ...r,
-      certificates: certificates.filter(c => c.training_record_id === r.id)
+      certificates: certificates.filter((c) => c.training_record_id === r.id),
     }));
 
     res.json({ records: recordsWithCerts });
@@ -75,38 +78,48 @@ router.put('/record/:recordId', requireAuth, requireRole('supervisor', 'coordina
   } = req.body;
 
   try {
-    const result = await db.query(`
-      UPDATE training_records SET
-        training_title = $1, training_type = $2, training_date = $3,
-        end_date = $4, completion_date = $5, location = $6,
-        instructor = $7, hours = $8, cost = $9, status = $10,
-        certified = $11, certification_name = $12,
-        certification_expiration = $13, certification_hours = $14,
-        score = $15, remarks = $16
-      WHERE id = $17
-      RETURNING *
-    `, [
-      training_title, training_type || 'internal',
-      training_date || null, end_date || null, completion_date || null,
-      location || null, instructor || null, hours || null, cost || null,
-      status || 'attended', certified || false, certification_name || null,
-      certification_expiration || null, certification_hours || null,
-      score || null, remarks || null, req.params.recordId
-    ]);
+    // training_records has no update trigger, so .returning() is fine here.
+    const [record] = await db('training_records')
+      .where({ id: req.params.recordId })
+      .update({
+        training_title,
+        training_type: training_type || 'internal',
+        training_date: training_date || null,
+        end_date: end_date || null,
+        completion_date: completion_date || null,
+        location: location || null,
+        instructor: instructor || null,
+        hours: hours || null,
+        cost: cost || null,
+        status: status || 'attended',
+        certified: certified || false,
+        certification_name: certification_name || null,
+        certification_expiration: certification_expiration || null,
+        certification_hours: certification_hours || null,
+        score: score || null,
+        remarks: remarks || null,
+      })
+      .returning('*');
 
-    if (!result.rows[0]) {
+    if (!record) {
       return res.status(404).json({ error: 'Record not found' });
     }
 
-    const formatted = await db.query(`
-      SELECT tr.*,
-        to_char(tr.training_date, 'YYYY-MM-DD') as training_date,
-        to_char(tr.end_date, 'YYYY-MM-DD') as end_date,
-        to_char(tr.completion_date, 'YYYY-MM-DD') as completion_date,
-        to_char(tr.certification_expiration, 'YYYY-MM-DD') as certification_expiration
-      FROM training_records tr WHERE tr.id = $1
-    `, [req.params.recordId]);
-    res.json({ record: formatted.rows[0] });
+    // Re-select with the same date formatting used elsewhere, so the
+    // response shape matches what the frontend expects (plain text
+    // dates rather than whatever the driver's native type would be).
+    const formatted = await db('training_records as tr')
+      .select(
+        'tr.*',
+        db.raw("CONVERT(varchar(10), tr.training_date, 23) as training_date"),
+        db.raw("CONVERT(varchar(10), tr.end_date, 23) as end_date"),
+        db.raw("CONVERT(varchar(10), tr.completion_date, 23) as completion_date"),
+        db.raw("CONVERT(varchar(10), tr.certification_expiration, 23) as certification_expiration")
+      )
+      .where('tr.id', req.params.recordId)
+      .first();
+
+    res.json({ record: formatted });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to update record' });
@@ -127,24 +140,31 @@ router.post('/:officerId/record', requireAuth, requireRole('supervisor', 'coordi
   }
 
   try {
-    const result = await db.query(`
-      INSERT INTO training_records (
-        officer_id, training_title, training_type, training_date, end_date,
-        completion_date, location, instructor, hours, cost, status,
-        certified, certification_name, certification_expiration,
-        certification_hours, score, remarks, source, created_by
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,'manual',$18)
-      RETURNING *
-    `, [
-      req.params.officerId, training_title, training_type || 'internal',
-      training_date || null, end_date || null, completion_date || null,
-      location || null, instructor || null, hours || null, cost || null,
-      status || 'attended', certified || false, certification_name || null,
-      certification_expiration || null, certification_hours || null,
-      score || null, remarks || null, req.user.id
-    ]);
+    const [record] = await db('training_records')
+      .insert({
+        officer_id: req.params.officerId,
+        training_title,
+        training_type: training_type || 'internal',
+        training_date: training_date || null,
+        end_date: end_date || null,
+        completion_date: completion_date || null,
+        location: location || null,
+        instructor: instructor || null,
+        hours: hours || null,
+        cost: cost || null,
+        status: status || 'attended',
+        certified: certified || false,
+        certification_name: certification_name || null,
+        certification_expiration: certification_expiration || null,
+        certification_hours: certification_hours || null,
+        score: score || null,
+        remarks: remarks || null,
+        source: 'manual',
+        created_by: req.user.id,
+      })
+      .returning('*');
 
-    res.status(201).json({ record: result.rows[0] });
+    res.status(201).json({ record });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to create record' });
@@ -161,12 +181,17 @@ router.post('/record/:recordId/certificates', requireAuth, upload.array('certifi
 
     const inserted = [];
     for (const file of files) {
-      const result = await db.query(`
-        INSERT INTO training_certificates (training_record_id, filename, original_name, mimetype, size, uploaded_by)
-        VALUES ($1, $2, $3, $4, $5, $6)
-        RETURNING *
-      `, [req.params.recordId, file.filename, file.originalname, file.mimetype, file.size, req.user.id]);
-      inserted.push(result.rows[0]);
+      const [record] = await db('training_certificates')
+        .insert({
+          training_record_id: req.params.recordId,
+          filename: file.filename,
+          original_name: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+          uploaded_by: req.user.id,
+        })
+        .returning('*');
+      inserted.push(record);
     }
 
     res.status(201).json({ certificates: inserted });
@@ -179,16 +204,14 @@ router.post('/record/:recordId/certificates', requireAuth, upload.array('certifi
 // GET /api/transcript/record/:recordId/certificates/:certId - download certificate
 router.get('/record/:recordId/certificates/:certId', requireAuth, async (req, res) => {
   try {
-    const result = await db.query(
-      'SELECT * FROM training_certificates WHERE id = $1 AND training_record_id = $2',
-      [req.params.certId, req.params.recordId]
-    );
+    const cert = await db('training_certificates')
+      .where({ id: req.params.certId, training_record_id: req.params.recordId })
+      .first();
 
-    if (!result.rows[0]) {
+    if (!cert) {
       return res.status(404).json({ error: 'Certificate not found' });
     }
 
-    const cert = result.rows[0];
     const filePath = path.join(uploadDir, cert.filename);
 
     if (!fs.existsSync(filePath)) {
@@ -206,16 +229,16 @@ router.get('/record/:recordId/certificates/:certId', requireAuth, async (req, re
 // DELETE /api/transcript/record/:recordId/certificates/:certId - delete certificate
 router.delete('/record/:recordId/certificates/:certId', requireAuth, async (req, res) => {
   try {
-    const result = await db.query(
-      'DELETE FROM training_certificates WHERE id = $1 AND training_record_id = $2 RETURNING *',
-      [req.params.certId, req.params.recordId]
-    );
+    const [deleted] = await db('training_certificates')
+      .where({ id: req.params.certId, training_record_id: req.params.recordId })
+      .delete()
+      .returning('*');
 
-    if (!result.rows[0]) {
+    if (!deleted) {
       return res.status(404).json({ error: 'Certificate not found' });
     }
 
-    const filePath = path.join(uploadDir, result.rows[0].filename);
+    const filePath = path.join(uploadDir, deleted.filename);
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
     res.json({ ok: true });
@@ -236,22 +259,21 @@ router.get('/:officerId/pdf', requireAuth, async (req, res) => {
   }
 
   try {
-    const userResult = await db.query('SELECT * FROM users WHERE id = $1', [officerId]);
-    if (!userResult.rows[0]) {
+    const officer = await db('users').where({ id: officerId }).first();
+    if (!officer) {
       return res.status(404).json({ error: 'User not found' });
     }
-    const officer = userResult.rows[0];
 
-    const records = await db.query(`
-      SELECT tr.*,
-        to_char(tr.training_date, 'MM/DD/YYYY') as training_date_fmt,
-        to_char(tr.end_date, 'MM/DD/YYYY') as end_date_fmt,
-        to_char(tr.completion_date, 'MM/DD/YYYY') as completion_date_fmt,
-        to_char(tr.certification_expiration, 'MM/DD/YYYY') as cert_expiration_fmt
-      FROM training_records tr
-      WHERE tr.officer_id = $1
-      ORDER BY tr.training_date DESC NULLS LAST
-    `, [officerId]);
+    const records = await db('training_records as tr')
+      .select(
+        'tr.*',
+        db.raw("CONVERT(varchar(10), tr.training_date, 101) as training_date_fmt"),
+        db.raw("CONVERT(varchar(10), tr.end_date, 101) as end_date_fmt"),
+        db.raw("CONVERT(varchar(10), tr.completion_date, 101) as completion_date_fmt"),
+        db.raw("CONVERT(varchar(10), tr.certification_expiration, 101) as cert_expiration_fmt")
+      )
+      .where('tr.officer_id', officerId)
+      .orderByRaw(TRAINING_DATE_DESC_NULLS_LAST);
 
     const doc = new PDFDocument({ margin: 50 });
     const filename = `transcript_${officer.last_name}_${officer.first_name}.pdf`;
@@ -268,7 +290,7 @@ router.get('/:officerId/pdf', requireAuth, async (req, res) => {
     if (officer.badge_number) doc.fontSize(11).text(`Badge #${officer.badge_number}`, { align: 'center' });
     doc.moveDown(0.5);
 
-    const totalHours = records.rows.reduce((sum, r) => sum + (parseFloat(r.hours) || 0), 0);
+    const totalHours = records.reduce((sum, r) => sum + (parseFloat(r.hours) || 0), 0);
     doc.fontSize(11).text(`Total Training Hours: ${totalHours.toFixed(1)}`, { align: 'center' });
     doc.fontSize(10).fillColor('#888888').text(`Generated: ${new Date().toLocaleDateString('en-US', { timeZone: 'America/Chicago', month: 'long', day: 'numeric', year: 'numeric' })}`, { align: 'center' });
     doc.fillColor('#000000');
@@ -276,10 +298,10 @@ router.get('/:officerId/pdf', requireAuth, async (req, res) => {
     doc.moveTo(50, doc.y).lineTo(562, doc.y).stroke();
     doc.moveDown(0.5);
 
-    if (records.rows.length === 0) {
+    if (records.length === 0) {
       doc.fontSize(11).text('No training records found.', { align: 'center' });
     } else {
-      for (const r of records.rows) {
+      for (const r of records) {
         // Training title and badges
         doc.fontSize(12).font('Helvetica-Bold').text(r.training_title);
         doc.font('Helvetica');

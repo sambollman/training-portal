@@ -21,14 +21,24 @@ const storage = multer.diskStorage({
 const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
 // The list of training columns shared by every "list a training" query
-// below, with session_date/end_date converted to plain YYYY-MM-DD text
-// at the database layer (matching the original Postgres to_char(...)
-// behavior) so the frontend gets clean date strings either way.
+// below. session_date/end_date/start_time/end_time are all converted to
+// plain text at the database layer (matching the original Postgres
+// to_char(...) behavior for dates) rather than left as native
+// DATE/TIME values. This matters more than it might look: the SQL
+// Server driver (tedious) returns TIME columns as full JS Date objects
+// (epoch-dated 1970-01-01) rather than a simple "HH:MM:SS" string like
+// the old Postgres driver did. The frontend's formatTime() does a naive
+// t.split(':') expecting that simple string — fed a serialized Date
+// instead, it silently produced a wrong, oddly-consistent result rather
+// than an error. Converting to text here keeps the API contract exactly
+// what the frontend has always expected, regardless of driver quirks.
 const TRAINING_COLUMNS = [
   't.id', 't.title', 't.category', 't.description', 't.instructor', 't.location',
   db.raw("CONVERT(varchar(10), t.session_date, 23) as session_date"),
   db.raw("CONVERT(varchar(10), t.end_date, 23) as end_date"),
-  't.start_time', 't.end_time', 't.duration_hours', 't.seat_capacity',
+  db.raw("CONVERT(varchar(8), t.start_time, 108) as start_time"),
+  db.raw("CONVERT(varchar(8), t.end_time, 108) as end_time"),
+  't.duration_hours', 't.seat_capacity',
   't.no_seat_limit', 't.cost', 't.training_type', 't.is_required',
   't.is_out_of_state', 't.is_archived', 't.is_closed', 't.section_number',
   't.compliance_tag', 't.instructor_id', 't.created_by', 't.created_at', 't.updated_at',
@@ -191,8 +201,9 @@ router.get('/:id', requireAuth, async (req, res) => {
 router.post('/', requireAuth, requireRole('coordinator'), async (req, res) => {
   const {
     title, category, description, instructor, instructor_id, instructor_ids,
-    location, session_date, start_time,
-    duration_hours, seat_capacity, is_required, is_out_of_state, training_type, section_number, compliance_tag
+    location, session_date, end_date, start_time, end_time,
+    duration_hours, seat_capacity, no_seat_limit, cost,
+    is_required, is_out_of_state, training_type, section_number, compliance_tag
   } = req.body;
 
   if (!title || !session_date) {
@@ -200,13 +211,25 @@ router.post('/', requireAuth, requireRole('coordinator'), async (req, res) => {
   }
 
   try {
+    // Note: the original version of this route only captured a subset
+    // of the fields the create-training form actually sends —
+    // end_date, end_time, no_seat_limit, and cost were all silently
+    // dropped on creation (only the edit/update route saved them,
+    // which is why editing a freshly created training and re-saving
+    // would "fix" it). Fixed here as part of this conversion, since it
+    // came up directly while testing.
     const [training] = await db('trainings')
       .insert({
         title, category, description,
         instructor: instructor || null,
         instructor_id: instructor_id || null,
-        location, session_date, start_time,
+        location, session_date,
+        end_date: end_date || null,
+        start_time,
+        end_time: end_time || null,
         duration_hours, seat_capacity,
+        no_seat_limit: no_seat_limit || false,
+        cost: cost || null,
         is_required: is_required || false,
         is_out_of_state: is_out_of_state || false,
         training_type: training_type || 'internal',

@@ -28,7 +28,12 @@ router.get('/', requireAuth, async (req, res) => {
         't.title',
         db.raw("CONVERT(varchar(10), t.session_date, 23) as session_date"),
         db.raw("CONVERT(varchar(10), t.end_date, 23) as end_date"),
-        't.location', 't.category', 't.start_time',
+        't.location', 't.category',
+        // Converted to plain text for the same reason as in
+        // trainings.js's TRAINING_COLUMNS — tedious returns TIME
+        // columns as Date objects, which the frontend's naive
+        // t.split(':') parser mishandles.
+        db.raw("CONVERT(varchar(8), t.start_time, 108) as start_time"),
         db.raw("(SELECT TOP 1 comment FROM approval_steps WHERE enrollment_request_id = er.id AND decision = 'returned' ORDER BY decided_at DESC) as return_comment"),
         db.raw("(SELECT TOP 1 approver_name FROM approval_steps WHERE enrollment_request_id = er.id AND decision = 'returned' ORDER BY decided_at DESC) as returned_by")
       )

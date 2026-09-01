@@ -1,22 +1,41 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db/connection');
+const { db } = require('../db/connection');
 const { requireAuth, requireRole } = require('../middleware/auth');
 const { sendMail } = require('../utils/mailer');
+const { isDuplicateKeyError } = require('../db/errors');
+
+// Shared by POST / and POST /enroll — looks up a training along with how
+// many people are currently enrolled in it, so callers can check whether
+// a seat is actually available before creating an enrollment.
+async function getTrainingWithEnrolledCount(trainingId) {
+  return db('trainings as t')
+    .select(
+      't.*',
+      db.raw("(SELECT COUNT(*) FROM enrollment_requests er2 WHERE er2.training_id = t.id AND er2.status IN ('approved', 'enrolled')) as enrolled_count")
+    )
+    .where({ 't.id': trainingId, 't.is_archived': false })
+    .first();
+}
 
 // GET /api/requests - officer sees their own requests
 router.get('/', requireAuth, async (req, res) => {
   try {
-    const result = await db.query(`
-      SELECT er.*, t.title, to_char(t.session_date, 'YYYY-MM-DD') as session_date, to_char(t.end_date, 'YYYY-MM-DD') as end_date, t.location, t.category, t.start_time,
-      (SELECT comment FROM approval_steps WHERE enrollment_request_id = er.id AND decision = 'returned' ORDER BY decided_at DESC LIMIT 1) as return_comment,
-      (SELECT approver_name FROM approval_steps WHERE enrollment_request_id = er.id AND decision = 'returned' ORDER BY decided_at DESC LIMIT 1) as returned_by
-      FROM enrollment_requests er
-      JOIN trainings t ON er.training_id = t.id
-      WHERE er.officer_id = $1
-      ORDER BY t.session_date ASC
-    `, [req.user.id]);
-    res.json({ requests: result.rows });
+    const requests = await db('enrollment_requests as er')
+      .join('trainings as t', 'er.training_id', 't.id')
+      .select(
+        'er.*',
+        't.title',
+        db.raw("CONVERT(varchar(10), t.session_date, 23) as session_date"),
+        db.raw("CONVERT(varchar(10), t.end_date, 23) as end_date"),
+        't.location', 't.category', 't.start_time',
+        db.raw("(SELECT TOP 1 comment FROM approval_steps WHERE enrollment_request_id = er.id AND decision = 'returned' ORDER BY decided_at DESC) as return_comment"),
+        db.raw("(SELECT TOP 1 approver_name FROM approval_steps WHERE enrollment_request_id = er.id AND decision = 'returned' ORDER BY decided_at DESC) as returned_by")
+      )
+      .where('er.officer_id', req.user.id)
+      .orderBy('t.session_date', 'asc');
+
+    res.json({ requests });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch requests' });
@@ -26,17 +45,21 @@ router.get('/', requireAuth, async (req, res) => {
 // GET /api/requests/pending - supervisor sees pending requests for their unit
 router.get('/pending', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
   try {
-    const result = await db.query(`
-      SELECT er.*, t.title, to_char(t.session_date, 'YYYY-MM-DD') as session_date, to_char(t.end_date, 'YYYY-MM-DD') as end_date, t.location, t.category,
-             u.full_name, u.badge_number, u.unit
-      FROM enrollment_requests er
-      JOIN trainings t ON er.training_id = t.id
-      JOIN users u ON er.officer_id = u.id
-      WHERE er.status = 'pending'
-      AND er.supervisor_id = $1
-      ORDER BY er.created_at ASC
-    `, [req.user.id]);
-    res.json({ requests: result.rows });
+    const requests = await db('enrollment_requests as er')
+      .join('trainings as t', 'er.training_id', 't.id')
+      .join('users as u', 'er.officer_id', 'u.id')
+      .select(
+        'er.*',
+        't.title',
+        db.raw("CONVERT(varchar(10), t.session_date, 23) as session_date"),
+        db.raw("CONVERT(varchar(10), t.end_date, 23) as end_date"),
+        't.location', 't.category',
+        'u.full_name', 'u.badge_number', 'u.unit'
+      )
+      .where({ 'er.status': 'pending', 'er.supervisor_id': req.user.id })
+      .orderBy('er.created_at', 'asc');
+
+    res.json({ requests });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch pending requests' });
@@ -45,42 +68,55 @@ router.get('/pending', requireAuth, requireRole('supervisor', 'coordinator'), as
 
 router.get('/all', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
   try {
-    let query, params;
     const fullHistory = req.query.fullHistory === 'true';
-    const recentClause = `(t.session_date IS NULL OR t.session_date >= CURRENT_DATE - 90 OR er.chain_status <> 'complete')`;
 
+    // Matches "recent enough to show by default": no session date yet,
+    // within the last 90 days, or still actively moving through the
+    // approval chain regardless of age.
+    const applyRecentFilter = (builder) => {
+      builder
+        .whereNull('t.session_date')
+        .orWhere('t.session_date', '>=', db.raw('DATEADD(day, -90, CAST(GETDATE() AS DATE))'))
+        .orWhereNot('er.chain_status', 'complete');
+    };
+
+    const baseColumns = [
+      'er.*',
+      't.title',
+      db.raw("CONVERT(varchar(10), t.session_date, 23) as session_date"),
+      db.raw("CONVERT(varchar(10), t.end_date, 23) as end_date"),
+      't.location', 't.category',
+      'u.full_name', 'u.badge_number', 'u.unit',
+    ];
+
+    let query;
     if (req.user.role === 'coordinator') {
-      query = `
-        SELECT er.*, t.title, to_char(t.session_date, 'YYYY-MM-DD') as session_date, 
-          to_char(t.end_date, 'YYYY-MM-DD') as end_date, t.location, t.category,
-          u.full_name, u.badge_number, u.unit
-        FROM enrollment_requests er
-        JOIN trainings t ON er.training_id = t.id
-        JOIN users u ON er.officer_id = u.id
-        ${fullHistory ? '' : `WHERE ${recentClause}`}
-        ORDER BY er.created_at DESC
-        LIMIT 1000
-      `;
-      params = [];
+      query = db('enrollment_requests as er')
+        .join('trainings as t', 'er.training_id', 't.id')
+        .join('users as u', 'er.officer_id', 'u.id')
+        .select(...baseColumns)
+        .orderBy('er.created_at', 'desc')
+        .limit(1000);
+
+      if (!fullHistory) query = query.where(applyRecentFilter);
     } else {
-      query = `
-        SELECT DISTINCT er.*, t.title, to_char(t.session_date, 'YYYY-MM-DD') as session_date, 
-          to_char(t.end_date, 'YYYY-MM-DD') as end_date, t.location, t.category,
-          u.full_name, u.badge_number, u.unit
-        FROM enrollment_requests er
-        JOIN trainings t ON er.training_id = t.id
-        JOIN users u ON er.officer_id = u.id
-        LEFT JOIN approval_steps ap ON ap.enrollment_request_id = er.id
-        WHERE (er.supervisor_id = $1 OR ap.approver_id = $1)
-        ${fullHistory ? '' : `AND ${recentClause}`}
-        ORDER BY er.created_at DESC
-        LIMIT 1000
-      `;
-      params = [req.user.id];
+      query = db('enrollment_requests as er')
+        .distinct()
+        .join('trainings as t', 'er.training_id', 't.id')
+        .join('users as u', 'er.officer_id', 'u.id')
+        .leftJoin('approval_steps as ap', 'ap.enrollment_request_id', 'er.id')
+        .select(...baseColumns)
+        .where((builder) => {
+          builder.where('er.supervisor_id', req.user.id).orWhere('ap.approver_id', req.user.id);
+        })
+        .orderBy('er.created_at', 'desc')
+        .limit(1000);
+
+      if (!fullHistory) query = query.andWhere(applyRecentFilter);
     }
 
-    const result = await db.query(query, params);
-    res.json({ requests: result.rows, fullHistory });
+    const requests = await query;
+    res.json({ requests, fullHistory });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch requests' });
@@ -96,36 +132,39 @@ router.post('/', requireAuth, async (req, res) => {
   }
 
   try {
-    // Check training exists and has seats
-    const training = await db.query(`
-      SELECT t.*, COUNT(er.id) FILTER (WHERE er.status IN ('approved', 'enrolled')) AS enrolled_count
-      FROM trainings t
-      LEFT JOIN enrollment_requests er ON t.id = er.training_id
-      WHERE t.id = $1 AND t.is_archived = false
-      GROUP BY t.id
-    `, [training_id]);
+    const training = await getTrainingWithEnrolledCount(training_id);
 
-    if (!training.rows[0]) {
+    if (!training) {
       return res.status(404).json({ error: 'Training not found' });
     }
 
-    if (parseInt(training.rows[0].enrolled_count) >= training.rows[0].seat_capacity) {
+    // Note: seat_capacity is null when a training has no seat limit — a
+    // training with no limit should never report "full". The original
+    // version compared enrolled_count >= seat_capacity unconditionally,
+    // which in JS treats null as 0 for a >= comparison, meaning any
+    // no-seat-limit training would immediately (and incorrectly) reject
+    // every self-request. Fixed here to only enforce the cap when one
+    // actually exists.
+    if (training.seat_capacity !== null && training.enrolled_count >= training.seat_capacity) {
       return res.status(400).json({ error: 'Training is full' });
     }
 
-    // Get officer's supervisor
-    const officer = await db.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
-    const supervisor_id = officer.rows[0].supervisor_id;
+    const officer = await db('users').where({ id: req.user.id }).first();
+    const supervisor_id = officer.supervisor_id;
 
-    const result = await db.query(`
-      INSERT INTO enrollment_requests (training_id, officer_id, supervisor_id, request_type, status)
-      VALUES ($1, $2, $3, 'self_requested', 'pending')
-      RETURNING *
-    `, [training_id, req.user.id, supervisor_id]);
+    const [request] = await db('enrollment_requests')
+      .insert({
+        training_id,
+        officer_id: req.user.id,
+        supervisor_id,
+        request_type: 'self_requested',
+        status: 'pending',
+      })
+      .returning('*');
 
-    res.status(201).json({ request: result.rows[0] });
+    res.status(201).json({ request });
   } catch (err) {
-    if (err.code === '23505') {
+    if (isDuplicateKeyError(err)) {
       return res.status(400).json({ error: 'You are already enrolled in this training' });
     }
     console.error(err);
@@ -142,44 +181,43 @@ router.post('/enroll', requireAuth, requireRole('supervisor', 'coordinator'), as
   }
 
   try {
-    const training = await db.query(`
-      SELECT t.*, COUNT(er.id) FILTER (WHERE er.status IN ('approved', 'enrolled')) AS enrolled_count
-      FROM trainings t
-      LEFT JOIN enrollment_requests er ON t.id = er.training_id
-      WHERE t.id = $1 AND t.is_archived = false
-      GROUP BY t.id
-    `, [training_id]);
+    const training = await getTrainingWithEnrolledCount(training_id);
 
-    if (!training.rows[0]) {
+    if (!training) {
       return res.status(404).json({ error: 'Training not found' });
     }
 
-    if (parseInt(training.rows[0].enrolled_count) >= training.rows[0].seat_capacity) {
+    // Same no-seat-limit fix as the self-request route above.
+    if (training.seat_capacity !== null && training.enrolled_count >= training.seat_capacity) {
       return res.status(400).json({ error: 'Training is full' });
     }
 
-    const officer = await db.query('SELECT full_name, email FROM users WHERE id = $1', [officer_id]);
+    const officer = await db('users').select('full_name', 'email').where({ id: officer_id }).first();
 
-    const result = await db.query(`
-      INSERT INTO enrollment_requests (training_id, officer_id, supervisor_id, request_type, status)
-      VALUES ($1, $2, $3, 'supervisor_enrolled', 'approved')
-      RETURNING *
-    `, [training_id, officer_id, req.user.id]);
+    const [request] = await db('enrollment_requests')
+      .insert({
+        training_id,
+        officer_id,
+        supervisor_id: req.user.id,
+        request_type: 'supervisor_enrolled',
+        status: 'approved',
+      })
+      .returning('*');
 
-    if (officer.rows[0]) {
+    if (officer) {
       sendMail({
-        to: officer.rows[0].email,
-        subject: `You've been enrolled in a training - ${training.rows[0].title}`,
-        text: `Hi ${officer.rows[0].full_name.split(' ')[0]},\n\n` +
-          `${req.user.full_name} has enrolled you in "${training.rows[0].title}"` +
-          (training.rows[0].session_date ? ` on ${new Date(training.rows[0].session_date).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}` : '') +
+        to: officer.email,
+        subject: `You've been enrolled in a training - ${training.title}`,
+        text: `Hi ${officer.full_name.split(' ')[0]},\n\n` +
+          `${req.user.full_name} has enrolled you in "${training.title}"` +
+          (training.session_date ? ` on ${new Date(training.session_date).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}` : '') +
           `.\n\nLog in to the Training Portal for details.`,
       });
     }
 
-    res.status(201).json({ request: result.rows[0] });
+    res.status(201).json({ request });
   } catch (err) {
-    if (err.code === '23505') {
+    if (isDuplicateKeyError(err)) {
       return res.status(400).json({ error: 'Officer is already enrolled in this training' });
     }
     console.error(err);
@@ -190,18 +228,19 @@ router.post('/enroll', requireAuth, requireRole('supervisor', 'coordinator'), as
 // PATCH /api/requests/:id/approve
 router.patch('/:id/approve', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
   try {
-    const result = await db.query(`
-      UPDATE enrollment_requests
-      SET status = 'approved', acted_on_at = NOW(), acted_on_by = $1
-      WHERE id = $2 AND status = 'pending'
-      RETURNING *
-    `, [req.user.id, req.params.id]);
+    // Note: no .returning() — enrollment_requests has the same AFTER
+    // UPDATE trigger (updated_at) as users and trainings, so OUTPUT
+    // isn't allowed here. See the note in db/connection.js.
+    const affectedRows = await db('enrollment_requests')
+      .where({ id: req.params.id, status: 'pending' })
+      .update({ status: 'approved', acted_on_at: db.fn.now(), acted_on_by: req.user.id });
 
-    if (!result.rows[0]) {
+    if (affectedRows === 0) {
       return res.status(404).json({ error: 'Request not found or already acted on' });
     }
 
-    res.json({ request: result.rows[0] });
+    const request = await db('enrollment_requests').where({ id: req.params.id }).first();
+    res.json({ request });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to approve request' });
@@ -213,18 +252,17 @@ router.patch('/:id/deny', requireAuth, requireRole('supervisor', 'coordinator'),
   const { denial_note } = req.body;
 
   try {
-    const result = await db.query(`
-      UPDATE enrollment_requests
-      SET status = 'denied', denial_note = $1, acted_on_at = NOW(), acted_on_by = $2
-      WHERE id = $3 AND status = 'pending'
-      RETURNING *
-    `, [denial_note || null, req.user.id, req.params.id]);
+    // Same trigger restriction as /approve above — no .returning().
+    const affectedRows = await db('enrollment_requests')
+      .where({ id: req.params.id, status: 'pending' })
+      .update({ status: 'denied', denial_note: denial_note || null, acted_on_at: db.fn.now(), acted_on_by: req.user.id });
 
-    if (!result.rows[0]) {
+    if (affectedRows === 0) {
       return res.status(404).json({ error: 'Request not found or already acted on' });
     }
 
-    res.json({ request: result.rows[0] });
+    const request = await db('enrollment_requests').where({ id: req.params.id }).first();
+    res.json({ request });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to deny request' });
@@ -240,51 +278,39 @@ router.patch('/:id/attendance', requireAuth, requireRole('supervisor', 'coordina
   }
 
   try {
-    const result = await db.query(`
-      UPDATE enrollment_requests SET attended = $1 WHERE id = $2 RETURNING *
-    `, [attended, req.params.id]);
+    // Same trigger restriction as above — no .returning().
+    const affectedRows = await db('enrollment_requests').where({ id: req.params.id }).update({ attended });
 
-    if (!result.rows[0]) {
+    if (affectedRows === 0) {
       return res.status(404).json({ error: 'Request not found' });
     }
 
-    const request = result.rows[0];
+    const request = await db('enrollment_requests').where({ id: req.params.id }).first();
 
     if (attended) {
-      const training = await db.query('SELECT * FROM trainings WHERE id = $1', [request.training_id]);
-      const t = training.rows[0];
+      const training = await db('trainings').where({ id: request.training_id }).first();
 
-      const existing = await db.query(
-        'SELECT id FROM training_records WHERE enrollment_request_id = $1',
-        [request.id]
-      );
+      const existing = await db('training_records').where({ enrollment_request_id: request.id }).first();
 
-      if (existing.rows.length === 0 && t) {
-        await db.query(`
-          INSERT INTO training_records (
-            officer_id, training_title, training_date, end_date, location,
-            instructor, hours, source, enrollment_request_id, created_by
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'portal', $8, $9)
-        `, [
-          request.officer_id,
-          t.title,
-          t.session_date,
-          t.end_date || null,
-          t.location || null,
-          t.instructor || null,
-          t.duration_hours,
-          request.id,
-          req.user.id
-        ]);
+      if (!existing && training) {
+        await db('training_records').insert({
+          officer_id: request.officer_id,
+          training_title: training.title,
+          training_date: training.session_date,
+          end_date: training.end_date || null,
+          location: training.location || null,
+          instructor: training.instructor || null,
+          hours: training.duration_hours,
+          source: 'portal',
+          enrollment_request_id: request.id,
+          created_by: req.user.id,
+        });
       }
     } else {
-      await db.query(
-        'DELETE FROM training_records WHERE enrollment_request_id = $1',
-        [request.id]
-      );
+      await db('training_records').where({ enrollment_request_id: request.id }).delete();
     }
 
-    res.json({ request: result.rows[0] });
+    res.json({ request });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to update attendance' });
@@ -294,15 +320,18 @@ router.patch('/:id/attendance', requireAuth, requireRole('supervisor', 'coordina
 // DELETE /api/requests/:id - officer withdraws their own pending request
 router.delete('/:id', requireAuth, async (req, res) => {
   try {
-    const result = await db.query(`
-      DELETE FROM enrollment_requests
-      WHERE id = $1 AND officer_id = $2 
-      AND status IN ('pending', 'approved', 'enrolled')
-      AND (attended IS NULL OR attended = false)
-      RETURNING *
-    `, [req.params.id, req.user.id]);
+    // enrollment_requests has no DELETE trigger (only the AFTER UPDATE
+    // one), so .returning() is fine on a DELETE — the OUTPUT
+    // restriction only applies when the trigger's DML type matches the
+    // statement's.
+    const [deleted] = await db('enrollment_requests')
+      .where({ id: req.params.id, officer_id: req.user.id })
+      .whereIn('status', ['pending', 'approved', 'enrolled'])
+      .andWhere((builder) => builder.whereNull('attended').orWhere('attended', false))
+      .delete()
+      .returning('*');
 
-    if (!result.rows[0]) {
+    if (!deleted) {
       return res.status(400).json({ error: 'Cannot withdraw — you may have already attended this training or it has already been processed.' });
     }
 
@@ -316,13 +345,12 @@ router.delete('/:id', requireAuth, async (req, res) => {
 // DELETE /api/requests/:id/unenroll - supervisor removes an officer from a training
 router.delete('/:id/unenroll', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
   try {
-    const result = await db.query(`
-      DELETE FROM enrollment_requests
-      WHERE id = $1
-      RETURNING *
-    `, [req.params.id]);
+    const [deleted] = await db('enrollment_requests')
+      .where({ id: req.params.id })
+      .delete()
+      .returning('*');
 
-    if (!result.rows[0]) {
+    if (!deleted) {
       return res.status(404).json({ error: 'Enrollment not found' });
     }
 

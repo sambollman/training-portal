@@ -1,6 +1,6 @@
 const express = require('express');
 const session = require('express-session');
-const KnexSessionStore = require('connect-session-knex')(session);
+const { ConnectSessionKnexStore } = require('connect-session-knex');
 const path = require('path');
 const { db } = require('./db/connection');
 
@@ -11,10 +11,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(session({
-  store: new KnexSessionStore({
+  store: new ConnectSessionKnexStore({
     knex: db,
-    tablename: 'user_sessions',
-    createtable: true,
+    tableName: 'user_sessions',
+    createTable: true,
   }),
   secret: process.env.SESSION_SECRET || 'dev-secret',
   resave: false,

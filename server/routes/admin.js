@@ -2,17 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../db/connection');
 const { requireAuth, requireRole } = require('../middleware/auth');
-
-// SQL Server error numbers for a duplicate-key violation. Postgres uses a
-// single error code ('23505') for this regardless of which kind of key
-// was violated; SQL Server uses two different numbers instead — 2627 for
-// a primary key, 2601 for any other unique constraint (our username
-// column is the latter, but both are checked to be safe).
-const DUPLICATE_KEY_ERROR_NUMBERS = [2627, 2601];
-
-function isDuplicateKeyError(err) {
-  return DUPLICATE_KEY_ERROR_NUMBERS.includes(err.number);
-}
+const { isDuplicateKeyError } = require('../db/errors');
 
 router.get('/users', requireAuth, requireRole('supervisor', 'coordinator'), async (req, res) => {
   try {

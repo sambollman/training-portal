@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db/connection');
+const { db } = require('../db/connection');
 const { requireAuth, requireRole } = require('../middleware/auth');
+const { isDuplicateKeyError } = require('../db/errors');
 const multer = require('multer');
 const XLSX = require('xlsx');
 
@@ -44,45 +45,46 @@ router.post('/users', requireAuth, requireRole('coordinator'), upload.single('fi
       const full_name = `${first_name} ${last_name}`;
 
       // Check if user already exists by nd.gov username
-      const existing = await db.query(
-        'SELECT id FROM users WHERE post_license_number = $1',
-        [ndgovUsername]
-      );
+      // Note: no .returning() needed on these updates — users has the
+      // same AFTER UPDATE trigger as elsewhere, but since we're not
+      // asking for the updated row back (just a plain UPDATE), there's
+      // no OUTPUT clause involved and nothing for the trigger to
+      // conflict with.
+      const existing = await db('users').select('id').where({ post_license_number: ndgovUsername }).first();
 
-      if (existing.rows.length > 0) {
-        await db.query(
-          'UPDATE users SET first_name = $1, last_name = $2, full_name = $3 WHERE post_license_number = $4',
-          [first_name, last_name, full_name, ndgovUsername]
-        );
+      if (existing) {
+        await db('users')
+          .where({ post_license_number: ndgovUsername })
+          .update({ first_name, last_name, full_name });
         results.updated++;
         continue;
       }
 
       // Also check by full name in case they were manually added
-      const existingByName = await db.query(
-        'SELECT id FROM users WHERE full_name ILIKE $1',
-        [full_name]
-      );
+      const existingByName = await db('users').select('id').whereILike('full_name', full_name).first();
 
-      if (existingByName.rows.length > 0) {
-        await db.query(
-          'UPDATE users SET first_name = $1, last_name = $2, full_name = $3, post_license_number = $4 WHERE id = $5',
-          [first_name, last_name, full_name, ndgovUsername, existingByName.rows[0].id]
-        );
+      if (existingByName) {
+        await db('users')
+          .where({ id: existingByName.id })
+          .update({ first_name, last_name, full_name, post_license_number: ndgovUsername });
         results.updated++;
         continue;
       }
 
       // Insert new user — use nd.gov username as placeholder username until Okta login
       try {
-        await db.query(`
-          INSERT INTO users (username, first_name, last_name, full_name, post_license_number, role)
-          VALUES ($1, $2, $3, $4, $5, 'officer')
-        `, [ndgovUsername, first_name, last_name, full_name, ndgovUsername]);
+        await db('users').insert({
+          username: ndgovUsername,
+          first_name,
+          last_name,
+          full_name,
+          post_license_number: ndgovUsername,
+          role: 'officer',
+        });
 
         results.imported++;
       } catch (err) {
-        if (err.code === '23505') {
+        if (isDuplicateKeyError(err)) {
           results.updated++;
         } else {
           results.errors.push(`${full_name}: ${err.message}`);

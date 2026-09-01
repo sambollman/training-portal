@@ -1,37 +1,38 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db/connection');
+const { db } = require('../db/connection');
 const { requireAuth, requireRole } = require('../middleware/auth');
 
 // GET /api/specialized - get all specialized trainings (optionally by month)
 router.get('/', requireAuth, async (req, res) => {
   try {
     const { year, month } = req.query;
-    let query, params;
+
+    // Note: '*' here is safe alongside these two Central-time columns,
+    // unlike the tr.*-plus-same-named-CONVERT bug fixed elsewhere —
+    // these use different alias names (start_datetime_central, not
+    // start_datetime), so there's no duplicate-column ambiguity.
+    let query = db('specialized_trainings')
+      .select(
+        '*',
+        db.raw("FORMAT(start_datetime AT TIME ZONE 'UTC' AT TIME ZONE 'Central Standard Time', 'yyyy-MM-ddTHH:mm') as start_datetime_central"),
+        db.raw("FORMAT(end_datetime AT TIME ZONE 'UTC' AT TIME ZONE 'Central Standard Time', 'yyyy-MM-ddTHH:mm') as end_datetime_central")
+      )
+      .orderBy('start_datetime', 'asc');
 
     if (year && month) {
-        query = `
-            SELECT *,
-            to_char(start_datetime AT TIME ZONE 'America/Chicago', 'YYYY-MM-DD"T"HH24:MI') as start_datetime_central,
-            to_char(end_datetime AT TIME ZONE 'America/Chicago', 'YYYY-MM-DD"T"HH24:MI') as end_datetime_central
-            FROM specialized_trainings
-            WHERE EXTRACT(YEAR FROM start_datetime AT TIME ZONE 'America/Chicago') = $1
-            AND EXTRACT(MONTH FROM start_datetime AT TIME ZONE 'America/Chicago') = $2
-            ORDER BY start_datetime ASC
-        `;
-        params = [parseInt(year), parseInt(month)];
-        } else {
-        query = `
-            SELECT *,
-            to_char(start_datetime AT TIME ZONE 'America/Chicago', 'YYYY-MM-DD"T"HH24:MI') as start_datetime_central,
-            to_char(end_datetime AT TIME ZONE 'America/Chicago', 'YYYY-MM-DD"T"HH24:MI') as end_datetime_central
-            FROM specialized_trainings ORDER BY start_datetime ASC
-        `;
-        params = [];
+      // Postgres used EXTRACT(...) on the Central-converted timestamp;
+      // SQL Server's equivalent is DATEPART on the same AT TIME ZONE
+      // conversion used for the display columns above, so "which month
+      // this shows as in Central time" stays consistent between the
+      // filter and what's actually displayed.
+      query = query
+        .whereRaw("DATEPART(year, start_datetime AT TIME ZONE 'UTC' AT TIME ZONE 'Central Standard Time') = ?", [parseInt(year)])
+        .andWhereRaw("DATEPART(month, start_datetime AT TIME ZONE 'UTC' AT TIME ZONE 'Central Standard Time') = ?", [parseInt(month)]);
     }
 
-    const result = await db.query(query, params);
-    res.json({ trainings: result.rows });
+    const trainings = await query;
+    res.json({ trainings });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch specialized trainings' });
@@ -52,50 +53,44 @@ router.post('/', requireAuth, requireRole('coordinator'), async (req, res) => {
   try {
     if (is_recurring && recurrence_pattern && recurrence_end_date) {
       // Create parent record
-      const parent = await db.query(`
-        INSERT INTO specialized_trainings (
+      const [parent] = await db('specialized_trainings')
+        .insert({
           title, unit_type, start_datetime, end_datetime,
-          description, location, is_recurring, recurrence_pattern,
-          recurrence_end_date, created_by
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-        RETURNING *
-      `, [
-        title, unit_type, start_datetime, end_datetime,
-        description, location, true, recurrence_pattern,
-        recurrence_end_date, req.user.id
-      ]);
+          description, location,
+          is_recurring: true,
+          recurrence_pattern,
+          recurrence_end_date,
+          created_by: req.user.id,
+        })
+        .returning('*');
 
-      const parentId = parent.rows[0].id;
       const occurrences = generateOccurrences(start_datetime, end_datetime, recurrence_pattern, recurrence_end_date);
 
       for (const occ of occurrences) {
-        await db.query(`
-          INSERT INTO specialized_trainings (
-            title, unit_type, start_datetime, end_datetime,
-            description, location, is_recurring, recurrence_pattern,
-            parent_recurring_id, created_by
-          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-        `, [
-          title, unit_type, occ.start, occ.end,
-          description, location, true, recurrence_pattern,
-          parentId, req.user.id
-        ]);
+        await db('specialized_trainings').insert({
+          title, unit_type,
+          start_datetime: occ.start,
+          end_datetime: occ.end,
+          description, location,
+          is_recurring: true,
+          recurrence_pattern,
+          parent_recurring_id: parent.id,
+          created_by: req.user.id,
+        });
       }
 
-      res.status(201).json({ training: parent.rows[0], occurrences_created: occurrences.length });
+      res.status(201).json({ training: parent, occurrences_created: occurrences.length });
     } else {
-      const result = await db.query(`
-        INSERT INTO specialized_trainings (
+      const [training] = await db('specialized_trainings')
+        .insert({
           title, unit_type, start_datetime, end_datetime,
-          description, location, is_recurring, created_by
-        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
-        RETURNING *
-      `, [
-        title, unit_type, start_datetime, end_datetime,
-        description, location, false, req.user.id
-      ]);
+          description, location,
+          is_recurring: false,
+          created_by: req.user.id,
+        })
+        .returning('*');
 
-      res.status(201).json({ training: result.rows[0] });
+      res.status(201).json({ training });
     }
   } catch (err) {
     console.error(err);
@@ -108,16 +103,15 @@ router.put('/:id', requireAuth, requireRole('coordinator'), async (req, res) => 
   const { title, unit_type, start_datetime, end_datetime, description, location } = req.body;
 
   try {
-    const result = await db.query(`
-      UPDATE specialized_trainings SET
-        title=$1, unit_type=$2, start_datetime=$3, end_datetime=$4,
-        description=$5, location=$6
-      WHERE id=$7
-      RETURNING *
-    `, [title, unit_type, start_datetime, end_datetime, description, location, req.params.id]);
+    // specialized_trainings has no update trigger, so .returning() is
+    // fine here (unlike users/trainings/enrollment_requests).
+    const [training] = await db('specialized_trainings')
+      .where({ id: req.params.id })
+      .update({ title, unit_type, start_datetime, end_datetime, description, location })
+      .returning('*');
 
-    if (!result.rows[0]) return res.status(404).json({ error: 'Training not found' });
-    res.json({ training: result.rows[0] });
+    if (!training) return res.status(404).json({ error: 'Training not found' });
+    res.json({ training });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to update training' });
@@ -130,11 +124,14 @@ router.delete('/:id', requireAuth, requireRole('coordinator'), async (req, res) 
 
   try {
     if (delete_all_recurring === 'true') {
-      const training = await db.query('SELECT * FROM specialized_trainings WHERE id=$1', [req.params.id]);
-      const parentId = training.rows[0]?.parent_recurring_id || req.params.id;
-      await db.query('DELETE FROM specialized_trainings WHERE id=$1 OR parent_recurring_id=$1', [parentId]);
+      const training = await db('specialized_trainings').where({ id: req.params.id }).first();
+      const parentId = training?.parent_recurring_id || req.params.id;
+      await db('specialized_trainings')
+        .where('id', parentId)
+        .orWhere('parent_recurring_id', parentId)
+        .delete();
     } else {
-      await db.query('DELETE FROM specialized_trainings WHERE id=$1', [req.params.id]);
+      await db('specialized_trainings').where({ id: req.params.id }).delete();
     }
     res.json({ ok: true });
   } catch (err) {

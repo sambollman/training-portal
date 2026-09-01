@@ -1,10 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const db = require('../db/connection');
+const { db } = require('../db/connection');
 const { requireAuth } = require('../middleware/auth');
 const { sendMail } = require('../utils/mailer');
+const { isDuplicateKeyError } = require('../db/errors');
 
-// Postgres returns DATE columns as JS Date objects; format them plainly for email text.
+// DATE/DATETIME columns come back from the driver as JS Date objects
+// (true for both the old Postgres driver and the current SQL Server
+// one); format them plainly for email text either way.
 function fmtDate(d) {
   if (!d) return null;
   const date = d instanceof Date ? d : new Date(d);
@@ -17,220 +20,205 @@ function fmtDate(d) {
 // Otherwise returns sergeants and managers
 router.get('/first-approvers', requireAuth, async (req, res) => {
   try {
-    const officerRank = req.user.rank?.toLowerCase()
-    const trainingType = req.query.type // 'internal' or 'external'
-    const isCivilian = officerRank === 'civilian'
-    const isSgtOrManager = officerRank === 'sergeant' || officerRank === 'manager'
+    const officerRank = req.user.rank?.toLowerCase();
+    const trainingType = req.query.type; // 'internal' or 'external'
+    const isCivilian = officerRank === 'civilian';
+    const isSgtOrManager = officerRank === 'sergeant' || officerRank === 'manager';
 
-    let ranks
+    let ranks;
     if (trainingType === 'internal') {
       // Internal trainings: civilians route to a Manager, everyone else to a Lieutenant
-      ranks = isCivilian ? ['Manager'] : ['Lieutenant']
+      ranks = isCivilian ? ['Manager'] : ['Lieutenant'];
     } else if (isSgtOrManager) {
-      ranks = ['Lieutenant']
+      ranks = ['Lieutenant'];
     } else {
-      ranks = ['Sergeant', 'Manager']
+      ranks = ['Sergeant', 'Manager'];
     }
 
-    const placeholders = ranks.map((_, i) => `$${i + 1}`).join(', ')
-    const result = await db.query(`
-      SELECT id, first_name, last_name, full_name, rank, unit, badge_number
-      FROM users
-      WHERE rank IN (${placeholders}) AND is_active = true AND id != $${ranks.length + 1}
-      ORDER BY last_name ASC, first_name ASC
-    `, [...ranks, req.user.id])
-    res.json({ approvers: result.rows })
+    const approvers = await db('users')
+      .select('id', 'first_name', 'last_name', 'full_name', 'rank', 'unit', 'badge_number')
+      .whereIn('rank', ranks)
+      .where('is_active', true)
+      .whereNot('id', req.user.id)
+      .orderBy('last_name', 'asc')
+      .orderBy('first_name', 'asc');
+
+    res.json({ approvers });
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Failed to fetch approvers' })
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch approvers' });
   }
-})
+});
 
 // Get list of next approvers based on current step
 router.get('/next-approvers/:rank', requireAuth, async (req, res) => {
   try {
-    const currentRank = req.params.rank.toLowerCase()
-    let nextRanks
+    const currentRank = req.params.rank.toLowerCase();
+    let nextRanks;
 
     if (currentRank === 'sergeant' || currentRank === 'manager') {
-      nextRanks = ['Lieutenant']
+      nextRanks = ['Lieutenant'];
     } else if (currentRank === 'lieutenant') {
-      nextRanks = ['Captain']
+      nextRanks = ['Captain'];
     } else if (currentRank === 'captain') {
-      nextRanks = ['Assistant Chief']
+      nextRanks = ['Assistant Chief'];
     } else {
-      return res.json({ approvers: [] })
+      return res.json({ approvers: [] });
     }
 
-    const placeholders = nextRanks.map((_, i) => `$${i + 1}`).join(', ')
-    const result = await db.query(`
-      SELECT id, first_name, last_name, full_name, rank, unit, badge_number
-      FROM users
-      WHERE rank IN (${placeholders}) AND is_active = true
-      ORDER BY last_name ASC, first_name ASC
-    `, nextRanks)
+    const approvers = await db('users')
+      .select('id', 'first_name', 'last_name', 'full_name', 'rank', 'unit', 'badge_number')
+      .whereIn('rank', nextRanks)
+      .where('is_active', true)
+      .orderBy('last_name', 'asc')
+      .orderBy('first_name', 'asc');
 
-    res.json({ approvers: result.rows })
+    res.json({ approvers });
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Failed to fetch next approvers' })
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch next approvers' });
   }
-})
+});
 
 // Submit a self-request with reason and first approver
 router.post('/submit', requireAuth, async (req, res) => {
-  const { training_id, reason, first_approver_id, training_cost, travel_cost, hotel_cost, per_diem } = req.body
+  const { training_id, reason, first_approver_id, training_cost, travel_cost, hotel_cost, per_diem } = req.body;
 
   if (!training_id || !first_approver_id) {
-    return res.status(400).json({ error: 'Training and first approver are required' })
+    return res.status(400).json({ error: 'Training and first approver are required' });
   }
 
   try {
     // Check training exists and has seats
-    const training = await db.query(`
-      SELECT t.*, COUNT(er.id) FILTER (WHERE er.status IN ('approved', 'enrolled')) AS enrolled_count
-      FROM trainings t
-      LEFT JOIN enrollment_requests er ON t.id = er.training_id
-      WHERE t.id = $1 AND t.is_archived = false
-      GROUP BY t.id
-    `, [training_id])
+    const t = await db('trainings as t')
+      .select(
+        't.*',
+        db.raw("(SELECT COUNT(*) FROM enrollment_requests er2 WHERE er2.training_id = t.id AND er2.status IN ('approved', 'enrolled')) as enrolled_count")
+      )
+      .where({ 't.id': training_id, 't.is_archived': false })
+      .first();
 
-    if (!training.rows[0]) {
-      return res.status(404).json({ error: 'Training not found' })
+    if (!t) {
+      return res.status(404).json({ error: 'Training not found' });
     }
 
-    const t = training.rows[0]
-    if (!t.no_seat_limit && t.seat_capacity && parseInt(t.enrolled_count) >= t.seat_capacity) {
-      return res.status(400).json({ error: 'Training is full' })
+    if (!t.no_seat_limit && t.seat_capacity && t.enrolled_count >= t.seat_capacity) {
+      return res.status(400).json({ error: 'Training is full' });
     }
 
     // Get first approver info
-    const approver = await db.query('SELECT * FROM users WHERE id = $1', [first_approver_id])
-    if (!approver.rows[0]) {
-      return res.status(404).json({ error: 'Approver not found' })
+    const approver = await db('users').where({ id: first_approver_id }).first();
+    if (!approver) {
+      return res.status(404).json({ error: 'Approver not found' });
     }
 
     // Create enrollment request
-    const request = await db.query(`
-      INSERT INTO enrollment_requests 
-        (training_id, officer_id, supervisor_id, request_type, status, reason, chain_status,
-        training_cost, travel_cost, hotel_cost, per_diem)
-      VALUES ($1, $2, $3, 'self_requested', 'pending', $4, 'in_progress', $5, $6, $7, $8)
-      RETURNING *
-    `, [training_id, req.user.id, first_approver_id, reason || null,
-      training_cost || null, travel_cost || null, hotel_cost || null, per_diem || null])
-
-    const enrollmentRequest = request.rows[0]
+    const [enrollmentRequest] = await db('enrollment_requests')
+      .insert({
+        training_id,
+        officer_id: req.user.id,
+        supervisor_id: first_approver_id,
+        request_type: 'self_requested',
+        status: 'pending',
+        reason: reason || null,
+        chain_status: 'in_progress',
+        training_cost: training_cost || null,
+        travel_cost: travel_cost || null,
+        hotel_cost: hotel_cost || null,
+        per_diem: per_diem || null,
+      })
+      .returning('*');
 
     // Create first approval step
-    await db.query(`
-      INSERT INTO approval_steps (enrollment_request_id, step_number, approver_id, approver_name, approver_rank)
-      VALUES ($1, $2, $3, $4, $5)
-    `, [
-      enrollmentRequest.id,
-      1,
-      first_approver_id,
-      approver.rows[0].full_name,
-      approver.rows[0].rank
-    ])
+    await db('approval_steps').insert({
+      enrollment_request_id: enrollmentRequest.id,
+      step_number: 1,
+      approver_id: first_approver_id,
+      approver_name: approver.full_name,
+      approver_rank: approver.rank,
+    });
 
     sendMail({
-      to: approver.rows[0].email,
+      to: approver.email,
       subject: `Training request awaiting your approval - ${t.title}`,
       text: `${req.user.full_name} has requested to attend "${t.title}"` +
         (fmtDate(t.session_date) ? ` on ${fmtDate(t.session_date)}` : '') +
         `.\n\nLog in to the Training Portal to review and approve or deny this request.`,
-    })
+    });
 
-    res.status(201).json({ request: enrollmentRequest })
+    res.status(201).json({ request: enrollmentRequest });
   } catch (err) {
-    if (err.code === '23505') {
-      return res.status(400).json({ error: 'You are already enrolled in this training' })
+    if (isDuplicateKeyError(err)) {
+      return res.status(400).json({ error: 'You are already enrolled in this training' });
     }
-    console.error(err)
-    res.status(500).json({ error: 'Failed to submit request' })
+    console.error(err);
+    res.status(500).json({ error: 'Failed to submit request' });
   }
-})
+});
 
 // Get pending approvals for the current user
 router.get('/my-pending', requireAuth, async (req, res) => {
   try {
-    const result = await db.query(`
-      SELECT 
-        ap.*,
-        er.reason,
-        er.officer_response,
-        er.training_id,
-        er.officer_id,
-        er.chain_status,
-        er.training_cost,
-        er.travel_cost,
-        er.hotel_cost,
-        er.per_diem,
-        to_char(t.session_date, 'YYYY-MM-DD') as session_date,
-        to_char(t.end_date, 'YYYY-MM-DD') as end_date,
-        t.title as training_title,
-        t.location,
-        t.is_out_of_state,
-        t.training_type,
-        u.full_name as officer_name,
-        u.rank as officer_rank,
-        u.badge_number as officer_badge,
-        u.unit as officer_unit,
-        ap.is_additional
-      FROM approval_steps ap
-      JOIN enrollment_requests er ON ap.enrollment_request_id = er.id
-      JOIN trainings t ON er.training_id = t.id
-      JOIN users u ON er.officer_id = u.id
-      WHERE ap.approver_id = $1
-      AND ap.decision IS NULL
-      ORDER BY ap.created_at ASC
-    `, [req.user.id])
+    const approvals = await db('approval_steps as ap')
+      .join('enrollment_requests as er', 'ap.enrollment_request_id', 'er.id')
+      .join('trainings as t', 'er.training_id', 't.id')
+      .join('users as u', 'er.officer_id', 'u.id')
+      .select(
+        'ap.*',
+        'er.reason', 'er.officer_response', 'er.training_id', 'er.officer_id', 'er.chain_status',
+        'er.training_cost', 'er.travel_cost', 'er.hotel_cost', 'er.per_diem',
+        db.raw("CONVERT(varchar(10), t.session_date, 23) as session_date"),
+        db.raw("CONVERT(varchar(10), t.end_date, 23) as end_date"),
+        't.title as training_title', 't.location', 't.is_out_of_state', 't.training_type',
+        'u.full_name as officer_name', 'u.rank as officer_rank', 'u.badge_number as officer_badge', 'u.unit as officer_unit',
+        'ap.is_additional'
+      )
+      .where('ap.approver_id', req.user.id)
+      .whereNull('ap.decision')
+      .orderBy('ap.created_at', 'asc');
 
-    res.json({ approvals: result.rows })
+    res.json({ approvals });
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Failed to fetch pending approvals' })
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch pending approvals' });
   }
-})
+});
 
 // Get full approval chain for a request (for officer to view)
 router.get('/chain/:requestId', requireAuth, async (req, res) => {
   try {
-    const request = await db.query(`
-      SELECT er.*, 
-        to_char(t.session_date, 'YYYY-MM-DD') as session_date,
-        to_char(t.end_date, 'YYYY-MM-DD') as end_date,
-        t.title as training_title, t.location, t.is_out_of_state,
-        u.full_name as officer_name
-      FROM enrollment_requests er
-      JOIN trainings t ON er.training_id = t.id
-      JOIN users u ON er.officer_id = u.id
-      WHERE er.id = $1 AND er.officer_id = $2
-    `, [req.params.requestId, req.user.id])
+    const request = await db('enrollment_requests as er')
+      .join('trainings as t', 'er.training_id', 't.id')
+      .join('users as u', 'er.officer_id', 'u.id')
+      .select(
+        'er.*',
+        db.raw("CONVERT(varchar(10), t.session_date, 23) as session_date"),
+        db.raw("CONVERT(varchar(10), t.end_date, 23) as end_date"),
+        't.title as training_title', 't.location', 't.is_out_of_state',
+        'u.full_name as officer_name'
+      )
+      .where({ 'er.id': req.params.requestId, 'er.officer_id': req.user.id })
+      .first();
 
-    if (!request.rows[0]) {
-      return res.status(404).json({ error: 'Request not found' })
+    if (!request) {
+      return res.status(404).json({ error: 'Request not found' });
     }
 
-    const steps = await db.query(`
-      SELECT ap.*, 
-        to_char(ap.decided_at AT TIME ZONE 'America/Chicago', 'MM/DD/YYYY HH12:MI AM') as decided_at_central
-      FROM approval_steps ap
-      WHERE ap.enrollment_request_id = $1
-      ORDER BY ap.step_number ASC
-    `, [req.params.requestId])
+    const steps = await db('approval_steps as ap')
+      .select('ap.*', db.raw("FORMAT(ap.decided_at AT TIME ZONE 'UTC' AT TIME ZONE 'Central Standard Time', 'MM/dd/yyyy hh:mm tt') as decided_at_central"))
+      .where('ap.enrollment_request_id', req.params.requestId)
+      .orderBy('ap.step_number', 'asc');
 
-    res.json({ request: request.rows[0], steps: steps.rows })
+    res.json({ request, steps });
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Failed to fetch approval chain' })
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch approval chain' });
   }
-})
+});
 
 // Act on an approval step (approve or deny, pick next approver)
 router.post('/act/:stepId', requireAuth, async (req, res) => {
-  const { decision, comment, next_approver_id } = req.body
+  const { decision, comment, next_approver_id } = req.body;
 
   if (!decision || !['approved', 'denied', 'returned'].includes(decision)) {
     return res.status(400).json({ error: 'Decision must be approved, denied, or returned' });
@@ -238,62 +226,57 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
 
   try {
     // Get the step
-    const stepResult = await db.query(
-      'SELECT * FROM approval_steps WHERE id = $1 AND approver_id = $2',
-      [req.params.stepId, req.user.id]
-    )
+    const step = await db('approval_steps')
+      .where({ id: req.params.stepId, approver_id: req.user.id })
+      .first();
 
-    if (!stepResult.rows[0]) {
-      return res.status(404).json({ error: 'Approval step not found' })
+    if (!step) {
+      return res.status(404).json({ error: 'Approval step not found' });
     }
 
-    const step = stepResult.rows[0]
-
     // Get the enrollment request, training, and officer info
-    const requestResult = await db.query(`
-      SELECT er.*, t.is_out_of_state, t.training_type, t.title as training_title,
-        to_char(t.session_date, 'YYYY-MM-DD') as session_date,
-        o.full_name as officer_name, o.email as officer_email, o.rank as officer_rank
-      FROM enrollment_requests er
-      JOIN trainings t ON er.training_id = t.id
-      JOIN users o ON er.officer_id = o.id
-      WHERE er.id = $1
-    `, [step.enrollment_request_id])
+    const enrollmentRequest = await db('enrollment_requests as er')
+      .join('trainings as t', 'er.training_id', 't.id')
+      .join('users as o', 'er.officer_id', 'o.id')
+      .select(
+        'er.*', 't.is_out_of_state', 't.training_type', 't.title as training_title',
+        db.raw("CONVERT(varchar(10), t.session_date, 23) as session_date"),
+        'o.full_name as officer_name', 'o.email as officer_email', 'o.rank as officer_rank'
+      )
+      .where('er.id', step.enrollment_request_id)
+      .first();
 
-    const enrollmentRequest = requestResult.rows[0]
-    const training = enrollmentRequest
+    const training = enrollmentRequest;
 
     // Determine if this is the final step.
     // Internal: officers finalize at Lieutenant, civilians finalize at Manager.
     // External: finalizes at Captain (in-state) or Assistant Chief (out-of-state).
     // The coordinator is notified by email at that point - it is not a
     // required approval step, per the actual approval policy.
-    const currentRank = req.user.rank?.toLowerCase()
-    const isOutOfState = training.is_out_of_state
-    const isInternal = training.training_type === 'internal'
-    const isCivilianRequester = training.officer_rank?.toLowerCase() === 'civilian'
+    const currentRank = req.user.rank?.toLowerCase();
+    const isOutOfState = training.is_out_of_state;
+    const isInternal = training.training_type === 'internal';
+    const isCivilianRequester = training.officer_rank?.toLowerCase() === 'civilian';
 
     const isFinalStep = isInternal
       ? (isCivilianRequester ? currentRank === 'manager' : currentRank === 'lieutenant')
-      : ((currentRank === 'captain' && !isOutOfState) || currentRank === 'assistant chief')
+      : ((currentRank === 'captain' && !isOutOfState) || currentRank === 'assistant chief');
 
     // Update the current step
-    await db.query(`
-      UPDATE approval_steps SET
-        decision = $1, comment = $2, next_approver_id = $3, decided_at = NOW()
-      WHERE id = $4
-    `, [decision, comment || null, next_approver_id || null, req.params.stepId])
+    await db('approval_steps')
+      .where({ id: req.params.stepId })
+      .update({ decision, comment: comment || null, next_approver_id: next_approver_id || null, decided_at: db.fn.now() });
 
     if (decision === 'returned') {
-      await db.query(`
-        UPDATE enrollment_requests SET chain_status = 'returned'
-        WHERE id = $1
-      `, [step.enrollment_request_id]);
+      await db('enrollment_requests').where({ id: step.enrollment_request_id }).update({ chain_status: 'returned' });
 
-      await db.query(`
-        UPDATE approval_steps SET decision = 'returned', comment = $1, decided_at = NOW()
-        WHERE id = $2
-      `, [comment || null, req.params.stepId]);
+      // Note: this repeats the decision/comment/decided_at update from
+      // just above (also present in the original) — harmless since it's
+      // the same values, just kept as-is rather than changing behavior
+      // during this conversion.
+      await db('approval_steps')
+        .where({ id: req.params.stepId })
+        .update({ decision: 'returned', comment: comment || null, decided_at: db.fn.now() });
 
       sendMail({
         to: enrollmentRequest.officer_email,
@@ -301,17 +284,15 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
         text: `${req.user.full_name} has returned your request for "${enrollmentRequest.training_title}" for more information.\n\n` +
           (comment ? `Their comment: ${comment}\n\n` : '') +
           `Log in to the Training Portal to review and resubmit your request.`,
-      })
+      });
 
       return res.json({ ok: true, is_final: false, returned: true });
     }
 
     if (isFinalStep) {
-      await db.query(`
-        UPDATE enrollment_requests SET
-          status = $1, chain_status = 'complete', acted_on_at = NOW(), acted_on_by = $2
-        WHERE id = $3
-      `, [decision, req.user.id, step.enrollment_request_id])
+      await db('enrollment_requests')
+        .where({ id: step.enrollment_request_id })
+        .update({ status: decision, chain_status: 'complete', acted_on_at: db.fn.now(), acted_on_by: req.user.id });
 
       sendMail({
         to: enrollmentRequest.officer_email,
@@ -324,126 +305,107 @@ router.post('/act/:stepId', requireAuth, async (req, res) => {
           : `Your request to attend "${enrollmentRequest.training_title}" was not approved.` +
             (comment ? `\n\nReason: ${comment}` : '') +
             `\n\nLog in to the Training Portal for details.`,
-      })
+      });
 
       // For the external chain, loop in the coordinator as an FYI - not a
       // required action, so no approval step is created for them.
       if (!isInternal) {
-        const coordinator = await db.query(
-          "SELECT full_name, email FROM users WHERE role = 'coordinator' AND is_active = true LIMIT 1"
-        )
-        if (coordinator.rows[0]) {
+        const coordinator = await db('users')
+          .select('full_name', 'email')
+          .where({ role: 'coordinator', is_active: true })
+          .first();
+        if (coordinator) {
           sendMail({
-            to: coordinator.rows[0].email,
+            to: coordinator.email,
             subject: `Training request ${decision} - ${enrollmentRequest.training_title}`,
             text: `FYI - ${enrollmentRequest.officer_name}'s request for "${enrollmentRequest.training_title}" was ${decision} by ${req.user.full_name} (${req.user.rank}).\n\n` +
               `No action is needed from you; this is for your records.`,
-          })
+          });
         }
       }
     } else if (next_approver_id) {
-      const nextApprover = await db.query('SELECT * FROM users WHERE id = $1', [next_approver_id])
-      const maxStep = await db.query(
-        'SELECT MAX(step_number) as max FROM approval_steps WHERE enrollment_request_id = $1',
-        [step.enrollment_request_id]
-      )
-      await db.query(`
-        INSERT INTO approval_steps 
-          (enrollment_request_id, step_number, approver_id, approver_name, approver_rank)
-        VALUES ($1, $2, $3, $4, $5)
-      `, [
-        step.enrollment_request_id,
-        maxStep.rows[0].max + 1,
-        next_approver_id,
-        nextApprover.rows[0].full_name,
-        nextApprover.rows[0].rank
-      ])
-      await db.query(`
-        UPDATE enrollment_requests SET chain_status = 'in_progress', supervisor_id = $1
-        WHERE id = $2
-      `, [next_approver_id, step.enrollment_request_id])
+      const nextApprover = await db('users').where({ id: next_approver_id }).first();
+      const { max } = await db('approval_steps').where({ enrollment_request_id: step.enrollment_request_id }).max('step_number as max').first();
+
+      await db('approval_steps').insert({
+        enrollment_request_id: step.enrollment_request_id,
+        step_number: max + 1,
+        approver_id: next_approver_id,
+        approver_name: nextApprover.full_name,
+        approver_rank: nextApprover.rank,
+      });
+      await db('enrollment_requests')
+        .where({ id: step.enrollment_request_id })
+        .update({ chain_status: 'in_progress', supervisor_id: next_approver_id });
 
       sendMail({
-        to: nextApprover.rows[0].email,
+        to: nextApprover.email,
         subject: `Training request awaiting your approval - ${enrollmentRequest.training_title}`,
         text: `${enrollmentRequest.officer_name}'s request to attend "${enrollmentRequest.training_title}" needs your review.\n\n` +
           `Log in to the Training Portal to review and approve or deny this request.`,
-      })
+      });
     }
 
-    
     // Insert additional approver if requested
     if (req.body.additional_approver_id) {
-      const addlApprover = await db.query('SELECT * FROM users WHERE id = $1', [req.body.additional_approver_id])
-      const maxStep = await db.query(
-        'SELECT MAX(step_number) as max FROM approval_steps WHERE enrollment_request_id = $1',
-        [step.enrollment_request_id]
-      )
-      await db.query(`
-        INSERT INTO approval_steps (enrollment_request_id, step_number, approver_id, approver_name, approver_rank, is_additional)
-        VALUES ($1, $2, $3, $4, $5, true)
-      `, [
-        step.enrollment_request_id,
-        maxStep.rows[0].max + 1,
-        req.body.additional_approver_id,
-        addlApprover.rows[0].full_name,
-        addlApprover.rows[0].rank
-      ]);
+      const addlApprover = await db('users').where({ id: req.body.additional_approver_id }).first();
+      const { max } = await db('approval_steps').where({ enrollment_request_id: step.enrollment_request_id }).max('step_number as max').first();
+
+      await db('approval_steps').insert({
+        enrollment_request_id: step.enrollment_request_id,
+        step_number: max + 1,
+        approver_id: req.body.additional_approver_id,
+        approver_name: addlApprover.full_name,
+        approver_rank: addlApprover.rank,
+        is_additional: true,
+      });
     }
-    res.json({ ok: true, is_final: isFinalStep })
+    res.json({ ok: true, is_final: isFinalStep });
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Failed to process approval' })
+    console.error(err);
+    res.status(500).json({ error: 'Failed to process approval' });
   }
-})
+});
 
 // Get all requests acted on by this approver (history)
 router.get('/my-history', requireAuth, async (req, res) => {
   try {
-    const result = await db.query(`
-      SELECT 
-        ap.*,
-        er.reason,
-        er.chain_status,
-        to_char(t.session_date, 'YYYY-MM-DD') as session_date,
-        t.title as training_title,
-        u.full_name as officer_name,
-        u.badge_number as officer_badge,
-        to_char(ap.decided_at AT TIME ZONE 'America/Chicago', 'MM/DD/YYYY HH12:MI AM') as decided_at_central
-      FROM approval_steps ap
-      JOIN enrollment_requests er ON ap.enrollment_request_id = er.id
-      JOIN trainings t ON er.training_id = t.id
-      JOIN users u ON er.officer_id = u.id
-      WHERE ap.approver_id = $1
-      AND ap.decision IS NOT NULL
-      ORDER BY ap.decided_at DESC
-    `, [req.user.id])
+    const history = await db('approval_steps as ap')
+      .join('enrollment_requests as er', 'ap.enrollment_request_id', 'er.id')
+      .join('trainings as t', 'er.training_id', 't.id')
+      .join('users as u', 'er.officer_id', 'u.id')
+      .select(
+        'ap.*', 'er.reason', 'er.chain_status',
+        db.raw("CONVERT(varchar(10), t.session_date, 23) as session_date"),
+        't.title as training_title', 'u.full_name as officer_name', 'u.badge_number as officer_badge',
+        db.raw("FORMAT(ap.decided_at AT TIME ZONE 'UTC' AT TIME ZONE 'Central Standard Time', 'MM/dd/yyyy hh:mm tt') as decided_at_central")
+      )
+      .where('ap.approver_id', req.user.id)
+      .whereNotNull('ap.decision')
+      .orderBy('ap.decided_at', 'desc');
 
-    res.json({ history: result.rows })
+    res.json({ history });
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Failed to fetch history' })
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch history' });
   }
-})
+});
 
 // Get full chain history for a request (for approvers to see previous decisions)
 router.get('/history/:requestId', requireAuth, async (req, res) => {
   try {
-    const steps = await db.query(`
-      SELECT ap.*,
-        to_char(ap.decided_at AT TIME ZONE 'America/Chicago', 'MM/DD/YYYY HH12:MI AM') as decided_at_central
-      FROM approval_steps ap
-      WHERE ap.enrollment_request_id = $1
-      AND ap.decision IS NOT NULL
-      ORDER BY ap.step_number ASC
-    `, [req.params.requestId])
+    const steps = await db('approval_steps as ap')
+      .select('ap.*', db.raw("FORMAT(ap.decided_at AT TIME ZONE 'UTC' AT TIME ZONE 'Central Standard Time', 'MM/dd/yyyy hh:mm tt') as decided_at_central"))
+      .where('ap.enrollment_request_id', req.params.requestId)
+      .whereNotNull('ap.decision')
+      .orderBy('ap.step_number', 'asc');
 
-    res.json({ steps: steps.rows })
+    res.json({ steps });
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ error: 'Failed to fetch history' })
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch history' });
   }
-})
+});
 
 // POST /api/approvals/respond/:requestId - officer responds to a returned request
 router.post('/respond/:requestId', requireAuth, async (req, res) => {
@@ -451,72 +413,57 @@ router.post('/respond/:requestId', requireAuth, async (req, res) => {
 
   try {
     // Verify this is the officer's request
-    const request = await db.query(
-      'SELECT * FROM enrollment_requests WHERE id = $1 AND officer_id = $2',
-      [req.params.requestId, req.user.id]
-    );
+    const request = await db('enrollment_requests')
+      .where({ id: req.params.requestId, officer_id: req.user.id })
+      .first();
 
-    if (!request.rows[0]) {
+    if (!request) {
       return res.status(404).json({ error: 'Request not found' });
     }
 
-    if (request.rows[0].chain_status !== 'returned') {
+    if (request.chain_status !== 'returned') {
       return res.status(400).json({ error: 'This request has not been returned for more information' });
     }
 
     // Update the request with the officer's response
-    await db.query(`
-      UPDATE enrollment_requests SET
-        officer_response = $1,
-        reason = $2,
-        training_cost = $3,
-        travel_cost = $4,
-        hotel_cost = $5,
-        per_diem = $6,
-        chain_status = 'in_progress'
-      WHERE id = $7
-    `, [
-      officer_response || null,
-      reason || request.rows[0].reason,
-      training_cost || request.rows[0].training_cost,
-      travel_cost || request.rows[0].travel_cost,
-      hotel_cost || request.rows[0].hotel_cost,
-      per_diem || request.rows[0].per_diem,
-      req.params.requestId
-    ]);
+    await db('enrollment_requests')
+      .where({ id: req.params.requestId })
+      .update({
+        officer_response: officer_response || null,
+        reason: reason || request.reason,
+        training_cost: training_cost || request.training_cost,
+        travel_cost: travel_cost || request.travel_cost,
+        hotel_cost: hotel_cost || request.hotel_cost,
+        per_diem: per_diem || request.per_diem,
+        chain_status: 'in_progress',
+      });
 
     // Create a new pending step for the approver who returned it
-    const returnedStep = await db.query(`
-      SELECT * FROM approval_steps 
-      WHERE enrollment_request_id = $1 AND decision = 'returned'
-      ORDER BY decided_at DESC LIMIT 1
-    `, [req.params.requestId]);
+    const returnedStep = await db('approval_steps')
+      .where({ enrollment_request_id: req.params.requestId, decision: 'returned' })
+      .orderBy('decided_at', 'desc')
+      .first();
 
-    if (returnedStep.rows[0]) {
-      const maxStep = await db.query(
-        'SELECT MAX(step_number) as max FROM approval_steps WHERE enrollment_request_id = $1',
-        [req.params.requestId]
-      );
-      await db.query(`
-        INSERT INTO approval_steps (enrollment_request_id, step_number, approver_id, approver_name, approver_rank)
-        VALUES ($1, $2, $3, $4, $5)
-      `, [
-        req.params.requestId,
-        maxStep.rows[0].max + 1,
-        returnedStep.rows[0].approver_id,
-        returnedStep.rows[0].approver_name,
-        returnedStep.rows[0].approver_rank
-      ]);
+    if (returnedStep) {
+      const { max } = await db('approval_steps').where({ enrollment_request_id: req.params.requestId }).max('step_number as max').first();
 
-      const approverInfo = await db.query('SELECT email FROM users WHERE id = $1', [returnedStep.rows[0].approver_id]);
-      const trainingInfo = await db.query('SELECT title FROM trainings WHERE id = $1', [request.rows[0].training_id]);
+      await db('approval_steps').insert({
+        enrollment_request_id: req.params.requestId,
+        step_number: max + 1,
+        approver_id: returnedStep.approver_id,
+        approver_name: returnedStep.approver_name,
+        approver_rank: returnedStep.approver_rank,
+      });
+
+      const approverInfo = await db('users').select('email').where({ id: returnedStep.approver_id }).first();
+      const trainingInfo = await db('trainings').select('title').where({ id: request.training_id }).first();
 
       sendMail({
-        to: approverInfo.rows[0]?.email,
-        subject: `Updated training request ready for your review - ${trainingInfo.rows[0]?.title || ''}`,
-        text: `${req.user.full_name} has responded to your request for more information on "${trainingInfo.rows[0]?.title || 'their training request'}".\n\n` +
+        to: approverInfo?.email,
+        subject: `Updated training request ready for your review - ${trainingInfo?.title || ''}`,
+        text: `${req.user.full_name} has responded to your request for more information on "${trainingInfo?.title || 'their training request'}".\n\n` +
           `Log in to the Training Portal to review the updated request.`,
-      })
+      });
     }
 
     res.json({ ok: true });
@@ -526,4 +473,4 @@ router.post('/respond/:requestId', requireAuth, async (req, res) => {
   }
 });
 
-module.exports = router
+module.exports = router;

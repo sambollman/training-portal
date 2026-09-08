@@ -25,6 +25,44 @@ app.use(session({
   }
 }));
 
+// In Okta-header mode, every request to this app is expected to
+// already carry the trusted username header — the reverse proxy in
+// front of the app is responsible for authenticating the user and
+// injecting that header before the request ever reaches Node.
+//
+// Until now, only the /api/* routes individually checked for that
+// header (via requireAuth inside each route file) — the compiled React
+// app's static files and the SPA catch-all route had no auth check at
+// all, since Express served those before any authentication check ever
+// ran. That's not a data leak (no real data is served without hitting
+// a protected API route), but it does mean an unauthenticated visitor
+// could load the app shell itself, which doesn't match how IT expects
+// a proxy-authenticated app to behave — normally the proxy would
+// redirect an unauthenticated visitor to login before the app is ever
+// reached at all.
+//
+// This is a defense-in-depth backstop for that: if IT's reverse proxy
+// is configured correctly, this should never actually trigger in
+// practice, since the header will already be present on every request.
+// If it's ever missing (misconfigured proxy, or someone reaching the
+// app directly, bypassing the proxy), this stops the app shell itself
+// from loading rather than silently letting it load and only failing
+// later on an API call.
+//
+// Only active when OKTA_HEADER is set — local/dev mode (empty
+// OKTA_HEADER) keeps working exactly as before, since dev-login relies
+// on reaching the app without that header present at all.
+if (process.env.OKTA_HEADER) {
+  app.use((req, res, next) => {
+    if (req.path === '/api/health') return next(); // let uptime/health checks through unauthenticated
+    const headerName = process.env.OKTA_HEADER.toLowerCase();
+    if (!req.headers[headerName]) {
+      return res.status(401).send('Access denied: no authenticated user was found for this request. If you believe this is an error, contact IT.');
+    }
+    next();
+  });
+}
+
 const authRoutes = require('./routes/auth');
 const trainingRoutes = require('./routes/trainings');
 const requestRoutes = require('./routes/requests');

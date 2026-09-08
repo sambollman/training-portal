@@ -15,6 +15,18 @@ app.use(session({
     knex: db,
     tableName: 'user_sessions',
     createTable: true,
+    // connect-session-knex defaults to a housekeeping query every 60
+    // seconds (deleting expired sessions), forever, for as long as the
+    // app is running. On a normal always-on database that's harmless
+    // background noise — but on Azure SQL Database's serverless free
+    // tier, auto-pause only kicks in after a real period of total
+    // inactivity, and a query every 60 seconds never gives it that
+    // window. That's the most likely reason the database stayed
+    // "awake" (and billing against the free monthly allowance)
+    // continuously instead of pausing between actual testing sessions.
+    // Once an hour is more than sufficient for a low-traffic app like
+    // this, and gives auto-pause a real chance to work as intended.
+    cleanupInterval: 60 * 60 * 1000,
   }),
   secret: process.env.SESSION_SECRET || 'dev-secret',
   resave: false,
